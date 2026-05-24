@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Tab Groups Switcher",
   "version": "0.1.0",
-  "description": "Switch between open Firefox tab groups in a compact toolbar popup.",
+  "description": "Switch focus faster with a dedicated Firefox tab groups switcher.",
   "permissions": [
     "menus",
     "storage",
