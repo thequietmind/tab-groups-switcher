@@ -18,6 +18,10 @@ const validColors = new Set([
 
 let snapshotTimer = null;
 
+function getGroupName(group) {
+  return String(group.title ?? group.name ?? "").trim() || "Untitled group";
+}
+
 function getGroupId(group) {
   return group.id ?? group.groupId;
 }
@@ -165,7 +169,31 @@ function getRememberedId(snapshot) {
   return `group-${hashString(`${name}|${urlSignature}`)}`;
 }
 
-function findRememberedMatch(snapshot, rememberedGroups) {
+function hasExactUrlOrder(firstGroup, secondGroup) {
+  const firstUrls = (firstGroup.urls ?? []).map(normalizeUrl).filter(Boolean);
+  const secondUrls = (secondGroup.urls ?? []).map(normalizeUrl).filter(Boolean);
+
+  return (
+    firstUrls.length > 0 &&
+    secondUrls.length > 0 &&
+    firstUrls.join("|") === secondUrls.join("|")
+  );
+}
+
+function hasUniqueNameMatch(snapshot, rememberedGroup, rememberedGroups) {
+  const snapshotName = normalizeName(snapshot.name);
+
+  if (!snapshotName || normalizeName(rememberedGroup.name) !== snapshotName) {
+    return false;
+  }
+
+  return (
+    rememberedGroups.filter((group) => normalizeName(group.name) === snapshotName)
+      .length === 1
+  );
+}
+
+function findRememberedMatch(snapshot, rememberedGroups, options = {}) {
   const snapshotName = normalizeName(snapshot.name);
   let bestMatch = null;
   let bestScore = 0;
@@ -173,19 +201,21 @@ function findRememberedMatch(snapshot, rememberedGroups) {
   for (const rememberedGroup of rememberedGroups) {
     const nameMatches = normalizeName(rememberedGroup.name) === snapshotName;
     const overlap = getUrlOverlap(snapshot, rememberedGroup);
-    const exactUrls =
-      (snapshot.urls ?? []).length > 0 &&
-      (rememberedGroup.urls ?? []).length > 0 &&
-      (snapshot.urls ?? []).map(normalizeUrl).join("|") ===
-        (rememberedGroup.urls ?? []).map(normalizeUrl).join("|");
 
-    if (exactUrls) {
+    if (hasExactUrlOrder(snapshot, rememberedGroup)) {
+      return rememberedGroup;
+    }
+
+    if (
+      options.allowNameOnly &&
+      hasUniqueNameMatch(snapshot, rememberedGroup, rememberedGroups)
+    ) {
       return rememberedGroup;
     }
 
     const score = (nameMatches ? 0.5 : 0) + overlap;
 
-    if ((nameMatches && overlap >= 0.25) || overlap >= 0.7) {
+    if ((nameMatches && overlap >= 0.15) || overlap >= 0.7) {
       if (score > bestScore) {
         bestMatch = rememberedGroup;
         bestScore = score;
@@ -220,14 +250,50 @@ async function loadRememberedGroups() {
     ? result[storageKey]
     : [];
 
-  return rememberedGroups
-    .map(normalizeStoredGroup)
-    .sort((first, second) => first.order - second.order);
+  return compactRememberedGroups(
+    rememberedGroups.map(normalizeStoredGroup)
+  ).sort((first, second) => first.order - second.order);
+}
+
+function compactRememberedGroups(groups) {
+  const compactedGroups = [];
+
+  for (const group of groups) {
+    const existingGroup = compactedGroups.find((candidate) => {
+      const namesMatch = normalizeName(candidate.name) === normalizeName(group.name);
+      const oneGroupHasNoUrls =
+        (candidate.urls ?? []).length === 0 || (group.urls ?? []).length === 0;
+
+      return (
+        hasExactUrlOrder(candidate, group) ||
+        (namesMatch && (oneGroupHasNoUrls || getUrlOverlap(candidate, group) >= 0.7))
+      );
+    });
+
+    if (!existingGroup) {
+      compactedGroups.push(group);
+      continue;
+    }
+
+    if ((group.urls ?? []).length > (existingGroup.urls ?? []).length) {
+      existingGroup.urls = group.urls;
+      existingGroup.titles = group.titles;
+    }
+
+    existingGroup.name = existingGroup.name || group.name;
+    existingGroup.color = existingGroup.color || group.color;
+    existingGroup.createdAt = Math.min(existingGroup.createdAt, group.createdAt);
+    existingGroup.updatedAt = Math.max(existingGroup.updatedAt, group.updatedAt);
+  }
+
+  return compactedGroups;
 }
 
 async function saveRememberedGroups(groups) {
-  const normalizedGroups = groups.map((group, index) => ({
-    ...normalizeStoredGroup(group, index),
+  const normalizedGroups = compactRememberedGroups(
+    groups.map((group, index) => normalizeStoredGroup(group, index))
+  ).map((group, index) => ({
+    ...group,
     order: index
   }));
 
@@ -236,10 +302,8 @@ async function saveRememberedGroups(groups) {
 }
 
 function getGroupSnapshot(group, groupTabs) {
-  const title = String(group.title ?? "").trim() || "Untitled group";
-
   return {
-    name: title,
+    name: getGroupName(group),
     color: String(group.color || "grey"),
     urls: groupTabs.map((tab) => tab.url).filter(Boolean),
     titles: groupTabs.map((tab) => tab.title ?? ""),
@@ -295,7 +359,9 @@ async function snapshotOpenGroups() {
   const nextGroups = [...rememberedGroups];
 
   for (const { snapshot } of openSnapshots) {
-    const existingGroup = findRememberedMatch(snapshot, nextGroups);
+    const existingGroup = findRememberedMatch(snapshot, nextGroups, {
+      allowNameOnly: true
+    });
     const now = Date.now();
 
     if (existingGroup) {
@@ -338,15 +404,35 @@ function scheduleSnapshot() {
 function getOpenIds(openSnapshots, rememberedGroups) {
   const openIds = new Set();
 
-  for (const { snapshot } of openSnapshots) {
-    const rememberedMatch = findRememberedMatch(snapshot, rememberedGroups);
-
-    if (rememberedMatch) {
-      openIds.add(rememberedMatch.id);
+  for (const rememberedGroup of rememberedGroups) {
+    if (isRememberedGroupOpen(rememberedGroup, openSnapshots)) {
+      openIds.add(rememberedGroup.id);
     }
   }
 
   return openIds;
+}
+
+function isRememberedGroupOpen(rememberedGroup, openSnapshots) {
+  const rememberedName = normalizeName(rememberedGroup.name);
+
+  for (const { snapshot } of openSnapshots) {
+    const snapshotName = normalizeName(snapshot.name);
+
+    if (hasExactUrlOrder(snapshot, rememberedGroup)) {
+      return true;
+    }
+
+    if (rememberedName && snapshotName === rememberedName) {
+      return true;
+    }
+
+    if (getUrlOverlap(snapshot, rememberedGroup) >= 0.7) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 async function getMenuGroups() {
@@ -354,7 +440,9 @@ async function getMenuGroups() {
   const openSnapshots = await queryOpenGroupSnapshots();
   const openIds = getOpenIds(openSnapshots, rememberedGroups);
   const openGroups = openSnapshots.map(({ group, tabs, snapshot }) => {
-    const rememberedMatch = findRememberedMatch(snapshot, rememberedGroups);
+    const rememberedMatch = findRememberedMatch(snapshot, rememberedGroups, {
+      allowNameOnly: true
+    });
     const targetTab = tabs.find((tab) => !tab.discarded) ?? tabs[0];
 
     return {
@@ -403,6 +491,24 @@ async function restoreRememberedGroup(groupId) {
 
   if (!rememberedGroup) {
     throw new Error("That remembered group no longer exists.");
+  }
+
+  const openMatch = (await queryOpenGroupSnapshots()).find(({ snapshot }) => {
+    return (
+      findRememberedMatch(snapshot, [rememberedGroup], {
+        allowNameOnly: true
+      })?.id === rememberedGroup.id
+    );
+  });
+
+  if (openMatch) {
+    const targetTab = openMatch.tabs.find((tab) => !tab.discarded) ?? openMatch.tabs[0];
+    await activateOpenGroup(
+      getGroupId(openMatch.group),
+      openMatch.group.windowId,
+      targetTab?.id
+    );
+    return;
   }
 
   const urls = rememberedGroup.urls.length > 0 ? rememberedGroup.urls : ["about:blank"];

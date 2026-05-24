@@ -47,14 +47,18 @@ function getColorValue(color) {
 function createGroupButton(group) {
   const title = getGroupTitle(group);
   const button = document.createElement("button");
-  button.className = "group-button";
+  button.className = `group-button group-button-${group.type}`;
   button.type = "button";
   button.dataset.groupId = group.id;
+  button.dataset.groupType = group.type;
   button.setAttribute("role", "menuitem");
-  button.setAttribute("aria-label", title);
+  button.setAttribute(
+    "aria-label",
+    group.type === "open" ? `${title}, open` : `${title}, remembered`
+  );
 
   const indicator = document.createElement("span");
-  indicator.className = "color-dot";
+  indicator.className = `color-dot color-dot-${group.type}`;
   indicator.style.setProperty("--indicator", getColorValue(group.color));
 
   const titleElement = document.createElement("span");

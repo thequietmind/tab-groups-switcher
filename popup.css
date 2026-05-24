@@ -81,9 +81,17 @@ body {
 .color-dot {
   width: 12px;
   height: 12px;
-  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border: 1px solid var(--indicator);
   border-radius: 50%;
+}
+
+.color-dot-open {
   background: var(--indicator);
+}
+
+.color-dot-remembered {
+  border-width: 2px;
+  background: transparent;
 }
 
 .group-title {
