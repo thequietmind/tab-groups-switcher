@@ -3,17 +3,12 @@
 const api = globalThis.browser;
 const ungroupedId = api?.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
 const state = {
-  activeWindowId: null,
-  filter: "",
   groups: [],
-  showAllWindows: false,
   tabsByGroupKey: new Map()
 };
 
 const elements = {
   list: document.querySelector("#groups-list"),
-  searchInput: document.querySelector("#search-input"),
-  showAllWindows: document.querySelector("#show-all-windows"),
   status: document.querySelector("#status")
 };
 
@@ -64,35 +59,8 @@ function getGroupTitle(group) {
   return title || "Untitled group";
 }
 
-function getStateText(group) {
-  if (typeof group.collapsed !== "boolean") {
-    return "State unavailable";
-  }
-
-  return group.collapsed ? "Collapsed" : "Expanded";
-}
-
-function getTabWord(count) {
-  return count === 1 ? "tab" : "tabs";
-}
-
 function hasTabGroupSupport() {
   return Boolean(api?.tabGroups?.query && api?.tabs?.query && api?.tabs?.update);
-}
-
-async function getActiveWindowId() {
-  const activeTabs = await api.tabs.query({ active: true, currentWindow: true });
-
-  if (activeTabs[0]?.windowId !== undefined) {
-    return activeTabs[0].windowId;
-  }
-
-  if (api.windows?.getCurrent) {
-    const currentWindow = await api.windows.getCurrent();
-    return currentWindow.id;
-  }
-
-  return null;
 }
 
 function isGroupedTab(tab) {
@@ -134,89 +102,68 @@ function getGroupTabs(group) {
   return state.tabsByGroupKey.get(getGroupKey(group)) ?? [];
 }
 
-function getFilteredGroups() {
-  const query = state.filter.trim().toLocaleLowerCase();
-
-  if (!query) {
-    return state.groups;
-  }
-
-  return state.groups.filter((group) =>
-    getGroupTitle(group).toLocaleLowerCase().includes(query)
-  );
-}
-
 function getColorValue(color) {
   return colorMap[color] ?? "var(--indicator)";
 }
 
 function createGroupButton(group) {
   const groupId = getGroupId(group);
-  const tabs = getGroupTabs(group);
   const title = getGroupTitle(group);
   const button = document.createElement("button");
   button.className = "group-button";
   button.type = "button";
   button.dataset.groupId = String(groupId);
   button.setAttribute("role", "listitem");
-  button.setAttribute(
-    "aria-label",
-    `${title}, ${tabs.length} ${getTabWord(tabs.length)}, ${getStateText(group)}`
-  );
+  button.setAttribute("aria-label", title);
 
   const indicator = document.createElement("span");
   indicator.className = "color-dot";
   indicator.style.setProperty("--indicator", getColorValue(group.color));
 
-  const text = document.createElement("span");
-  text.className = "group-text";
-
   const titleElement = document.createElement("span");
   titleElement.className = "group-title";
   titleElement.textContent = title;
 
-  const details = document.createElement("span");
-  details.className = "group-detail";
-  const windowText = state.showAllWindows ? ` - Window ${group.windowId}` : "";
-  details.textContent = `${getStateText(group)}${windowText}`;
-
-  const count = document.createElement("span");
-  count.className = "tab-count";
-  count.textContent = String(tabs.length);
-
-  text.append(titleElement, details);
-  button.append(indicator, text, count);
-  button.addEventListener("click", () => activateGroup(group));
+  button.append(indicator, titleElement);
+  button.addEventListener("click", () => activateOpenGroup(group));
 
   return button;
 }
 
 function renderGroups() {
   clearList();
-  const groups = getFilteredGroups();
 
   if (state.groups.length === 0) {
-    setStatus(
-      state.showAllWindows
-        ? "No tab groups found."
-        : "No tab groups in this window."
-    );
-    return;
-  }
-
-  if (groups.length === 0) {
-    setStatus("No tab groups match your search.");
+    setStatus("No tab groups.");
     return;
   }
 
   setStatus("");
   const fragment = document.createDocumentFragment();
 
-  for (const group of groups) {
+  for (const group of state.groups) {
     fragment.append(createGroupButton(group));
   }
 
   elements.list.append(fragment);
+}
+
+function compareGroupsByTabPosition(first, second) {
+  const firstWindow = first.windowId ?? 0;
+  const secondWindow = second.windowId ?? 0;
+
+  if (firstWindow !== secondWindow) {
+    return firstWindow - secondWindow;
+  }
+
+  const firstTabIndex = getGroupTabs(first)[0]?.index ?? Number.MAX_SAFE_INTEGER;
+  const secondTabIndex = getGroupTabs(second)[0]?.index ?? Number.MAX_SAFE_INTEGER;
+
+  if (firstTabIndex !== secondTabIndex) {
+    return firstTabIndex - secondTabIndex;
+  }
+
+  return getGroupId(first) - getGroupId(second);
 }
 
 async function loadGroups() {
@@ -228,41 +175,16 @@ async function loadGroups() {
 
   try {
     setStatus("Loading tab groups...");
-    state.activeWindowId = await getActiveWindowId();
-
-    if (!state.showAllWindows && state.activeWindowId === null) {
-      throw new Error("Could not determine the active Firefox window.");
-    }
-
-    const queryInfo = state.showAllWindows ? {} : { windowId: state.activeWindowId };
-    const tabQueryInfo = state.showAllWindows ? {} : { windowId: state.activeWindowId };
-
+    // Firefox currently exposes only tab groups with visible/open tabs to WebExtensions.
     const [groups, tabs] = await Promise.all([
-      api.tabGroups.query(queryInfo),
-      api.tabs.query(tabQueryInfo)
+      api.tabGroups.query({}),
+      api.tabs.query({})
     ]);
-    const tabsByGroupKey = getTabsByGroupKey(tabs);
 
-    state.tabsByGroupKey = tabsByGroupKey;
+    state.tabsByGroupKey = getTabsByGroupKey(tabs);
     state.groups = groups
       .filter((group) => getGroupId(group) !== undefined)
-      .sort((first, second) => {
-        const firstWindow = first.windowId ?? 0;
-        const secondWindow = second.windowId ?? 0;
-
-        if (firstWindow !== secondWindow) {
-          return firstWindow - secondWindow;
-        }
-
-        const firstTabIndex = getGroupTabs(first)[0]?.index ?? Number.MAX_SAFE_INTEGER;
-        const secondTabIndex = getGroupTabs(second)[0]?.index ?? Number.MAX_SAFE_INTEGER;
-
-        if (firstTabIndex !== secondTabIndex) {
-          return firstTabIndex - secondTabIndex;
-        }
-
-        return getGroupId(first) - getGroupId(second);
-      });
+      .sort(compareGroupsByTabPosition);
     renderGroups();
   } catch (error) {
     console.error(error);
@@ -302,11 +224,11 @@ function getTargetTab(group) {
   return tabs.find((tab) => !tab.discarded) ?? tabs[0] ?? null;
 }
 
-async function activateGroup(group) {
+async function activateOpenGroup(group) {
   const targetTab = getTargetTab(group);
 
   if (!targetTab?.id) {
-    setStatus("No tabs were found for this group.");
+    setStatus("Saved or closed tab groups cannot be restored by WebExtensions yet.");
     return;
   }
 
@@ -321,17 +243,4 @@ async function activateGroup(group) {
   }
 }
 
-function bindEvents() {
-  elements.searchInput.addEventListener("input", (event) => {
-    state.filter = event.target.value;
-    renderGroups();
-  });
-
-  elements.showAllWindows.addEventListener("change", (event) => {
-    state.showAllWindows = event.target.checked;
-    loadGroups();
-  });
-}
-
-bindEvents();
 loadGroups();

@@ -7,24 +7,7 @@
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
-    <main class="popup" aria-labelledby="popup-title">
-      <header class="toolbar">
-        <h1 id="popup-title">Tab Groups</h1>
-        <label class="window-toggle">
-          <input id="show-all-windows" type="checkbox">
-          <span>All windows</span>
-        </label>
-      </header>
-
-      <label class="search-label" for="search-input">Search groups</label>
-      <input
-        id="search-input"
-        class="search-input"
-        type="search"
-        autocomplete="off"
-        placeholder="Search groups"
-      >
-
+    <main class="popup" aria-label="Tab groups">
       <p id="status" class="status" role="status" aria-live="polite"></p>
       <div id="groups-list" class="groups-list" role="list"></div>
     </main>
