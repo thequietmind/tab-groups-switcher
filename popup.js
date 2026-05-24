@@ -130,7 +130,7 @@ async function activateGroup(group) {
       });
     } else {
       await api.runtime.sendMessage({
-        type: "restoreRememberedGroup",
+        type: "openRememberedGroup",
         id: group.id
       });
     }

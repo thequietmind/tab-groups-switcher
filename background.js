@@ -301,6 +301,27 @@ async function saveRememberedGroups(groups) {
   return normalizedGroups;
 }
 
+async function updateRememberedGroup(rememberedGroupId, updates) {
+  const rememberedGroups = await loadRememberedGroups();
+  const groupIndex = rememberedGroups.findIndex(
+    (group) => group.id === rememberedGroupId
+  );
+
+  if (groupIndex === -1) {
+    return saveRememberedGroups(rememberedGroups);
+  }
+
+  rememberedGroups[groupIndex] = {
+    ...rememberedGroups[groupIndex],
+    ...updates,
+    id: rememberedGroupId,
+    updatedAt: Date.now(),
+    source: "auto-tracked"
+  };
+
+  return saveRememberedGroups(rememberedGroups);
+}
+
 function getGroupSnapshot(group, groupTabs) {
   return {
     name: getGroupName(group),
@@ -481,34 +502,38 @@ async function activateOpenGroup(groupId, windowId, tabId) {
   }
 }
 
-async function restoreRememberedGroup(groupId) {
-  if (!api?.tabs?.create || !api?.tabs?.group || !api?.tabGroups?.update) {
-    throw new Error("This Firefox version cannot create tab groups from extensions.");
-  }
-
-  const rememberedGroups = await loadRememberedGroups();
-  const rememberedGroup = rememberedGroups.find((group) => group.id === groupId);
-
-  if (!rememberedGroup) {
-    throw new Error("That remembered group no longer exists.");
-  }
-
-  const openMatch = (await queryOpenGroupSnapshots()).find(({ snapshot }) => {
+function findOpenMatchForRememberedGroup(rememberedGroup, openSnapshots) {
+  return openSnapshots.find(({ snapshot }) => {
     return (
       findRememberedMatch(snapshot, [rememberedGroup], {
         allowNameOnly: true
       })?.id === rememberedGroup.id
     );
   });
+}
 
-  if (openMatch) {
-    const targetTab = openMatch.tabs.find((tab) => !tab.discarded) ?? openMatch.tabs[0];
-    await activateOpenGroup(
-      getGroupId(openMatch.group),
-      openMatch.group.windowId,
-      targetTab?.id
-    );
-    return;
+async function focusOpenRememberedGroup(rememberedGroup) {
+  const openMatch = findOpenMatchForRememberedGroup(
+    rememberedGroup,
+    await queryOpenGroupSnapshots()
+  );
+
+  if (!openMatch) {
+    return false;
+  }
+
+  const targetTab = openMatch.tabs.find((tab) => !tab.discarded) ?? openMatch.tabs[0];
+  await activateOpenGroup(
+    getGroupId(openMatch.group),
+    openMatch.group.windowId,
+    targetTab?.id
+  );
+  return true;
+}
+
+async function recreateRememberedGroup(rememberedGroup) {
+  if (!api?.tabs?.create || !api?.tabs?.group || !api?.tabGroups?.update) {
+    throw new Error("This Firefox version cannot create tab groups from extensions.");
   }
 
   const urls = rememberedGroup.urls.length > 0 ? rememberedGroup.urls : ["about:blank"];
@@ -545,7 +570,28 @@ async function restoreRememberedGroup(groupId) {
     await api.tabs.update(firstTab.id, { active: true });
   }
 
+  await updateRememberedGroup(rememberedGroup.id, {
+    name: rememberedGroup.name,
+    color: rememberedGroup.color,
+    urls: createdTabs.map((tab) => tab.url).filter(Boolean),
+    titles: createdTabs.map((tab) => tab.title ?? "")
+  });
   await snapshotOpenGroups();
+}
+
+async function openRememberedGroup(groupId) {
+  const rememberedGroups = await loadRememberedGroups();
+  const rememberedGroup = rememberedGroups.find((group) => group.id === groupId);
+
+  if (!rememberedGroup) {
+    throw new Error("That remembered group no longer exists.");
+  }
+
+  if (await focusOpenRememberedGroup(rememberedGroup)) {
+    return;
+  }
+
+  await recreateRememberedGroup(rememberedGroup);
 }
 
 function onMessage(message) {
@@ -557,8 +603,8 @@ function onMessage(message) {
     return activateOpenGroup(message.groupId, message.windowId, message.tabId);
   }
 
-  if (message?.type === "restoreRememberedGroup") {
-    return restoreRememberedGroup(message.id);
+  if (message?.type === "openRememberedGroup") {
+    return openRememberedGroup(message.id);
   }
 
   if (message?.type === "snapshotOpenGroups") {

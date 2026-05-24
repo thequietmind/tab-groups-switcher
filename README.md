@@ -1,6 +1,6 @@
 # Tab Groups Menu
 
-A compact Firefox WebExtension for jumping between open tab groups and reopening groups the extension has automatically remembered.
+A compact Firefox WebExtension for jumping between open tab groups and recreating groups the extension has automatically remembered.
 
 Firefox does not currently expose native saved tab groups to WebExtensions. This extension works within that limitation by quietly snapshotting tab groups while Firefox exposes them as open groups, then keeping those snapshots in `browser.storage.local`.
 
@@ -19,16 +19,16 @@ Firefox does not currently expose native saved tab groups to WebExtensions. This
 3. Click an open group and confirm Firefox focuses that window, expands the group if needed, and activates a tab in the group.
 4. Close or save a group after it has been seen by the extension.
 5. Reopen the popup and confirm the remembered group remains without duplicating any currently open group.
-6. Click the remembered group and confirm its tabs reopen in a restored tab group with the saved title and color.
+6. Click the remembered group and confirm its tabs reopen in a recreated tab group with the saved title and color.
 7. Open the extension options page and confirm remembered groups can be reordered, edited, deleted, exported, and imported.
 
 If the popup says `Firefox tab group extension APIs are not available in this browser version.`, update Firefox to a version that supports the `browser.tabGroups` WebExtensions API.
 
 ## Automatic Remembering
 
-The background service worker watches tab group and tab lifecycle events, then snapshots every visible/open tab group with its title, color, ordered URLs, ordered tab titles, and timestamps. Remembered groups are stored in `browser.storage.local` and keep a manual `order` value for the popup.
+The background script watches tab group and tab lifecycle events, then snapshots every visible/open tab group with its title, color, ordered URLs, ordered tab titles, and timestamps. Remembered groups are stored in `browser.storage.local` and keep a manual `order` value for the popup.
 
-Open groups are shown first. Remembered groups are shown second, in the saved manual order. When a currently open group matches a remembered group, the popup hides the remembered duplicate.
+Open groups are shown first. Remembered groups are shown second, in the saved manual order. When a currently open group matches a remembered group, the popup hides the remembered duplicate and clicking that group focuses the open copy.
 
 Matching favors exact URL signatures, then normalized group names plus URL overlap. This avoids relying on Firefox group IDs being stable across sessions.
 
@@ -43,9 +43,15 @@ Open the extension options page to manage remembered groups:
 - Delete remembered groups.
 - Export or import a JSON backup.
 
+## Restore Behavior
+
+Firefox does not expose native saved tab groups directly to WebExtensions, and the supported `sessions` API exposes recently closed entries as tabs or windows rather than tab group records. Because of that, the extension cannot reopen a specific native saved tab group by identity.
+
+When you click a remembered group, the extension first checks whether an equivalent group is already open and focuses it. If it is closed, the extension recreates the group from the URLs it previously remembered, then reconciles the new live group back into the existing remembered record so the popup does not show duplicate entries.
+
 ## Limitations
 
-Firefox does not expose native saved tab groups directly to WebExtensions. This extension does not read Firefox profile files, inspect sessionstore internals, use native messaging, or call undocumented APIs. It can only restore groups that it previously saw while they were open and exposed by Firefox.
+This extension does not read Firefox profile files, inspect sessionstore internals, use native messaging, or call undocumented APIs. It can only recreate groups that it previously saw while they were open and exposed by Firefox.
 
 ## Bugzilla Tracking
 
