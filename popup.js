@@ -3,7 +3,8 @@
 const api = globalThis.browser;
 const settingsKey = "settings";
 const defaultSettings = {
-  minimizeOtherTabGroupsWhenSwitching: false
+  minimizeOtherTabGroupsWhenSwitching: false,
+  showRememberedClosedGroups: false
 };
 const state = {
   groups: []
@@ -79,7 +80,7 @@ function renderGroups() {
   clearList();
 
   if (state.groups.length === 0) {
-    setStatus("No remembered tab groups yet.");
+    setStatus("No open tab groups.");
     return;
   }
 
@@ -102,7 +103,12 @@ async function loadGroups() {
 
   try {
     setStatus("Loading tab groups...");
-    state.groups = (await api.runtime.sendMessage({ type: "getMenuGroups" })) ?? [];
+    const settings = await loadSettings();
+    state.groups =
+      (await api.runtime.sendMessage({
+        type: "getMenuGroups",
+        includeRememberedGroups: settings.showRememberedClosedGroups === true
+      })) ?? [];
     renderGroups();
   } catch (error) {
     console.error(error);
@@ -135,8 +141,7 @@ async function activateGroup(group) {
     setStatus("");
     const settings = await loadSettings();
     const minimizeOtherGroups =
-      settings.minimizeOtherTabGroupsWhenSwitching === true ||
-      settings.closeOtherTabGroupsWhenSwitching === true;
+      settings.minimizeOtherTabGroupsWhenSwitching === true;
 
     if (group.type === "open") {
       await api.runtime.sendMessage({

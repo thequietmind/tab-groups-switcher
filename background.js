@@ -470,7 +470,7 @@ function isRememberedGroupOpen(rememberedGroup, openSnapshots) {
   return false;
 }
 
-async function getMenuGroups() {
+async function getMenuGroups(options = {}) {
   const rememberedGroups = await snapshotOpenGroups();
   const openSnapshots = await queryOpenGroupSnapshots();
   const openIds = getOpenIds(openSnapshots, rememberedGroups);
@@ -502,15 +502,18 @@ async function getMenuGroups() {
     }
   }
 
-  const rememberedMenuGroups = rememberedGroups
-    .filter((group) => !openIds.has(group.id))
-    .map((group) => ({
-      id: group.id,
-      type: "remembered",
-      name: group.name,
-      color: group.color,
-      order: group.order
-    }));
+  const rememberedMenuGroups =
+    options.includeRememberedGroups === true
+      ? rememberedGroups
+          .filter((group) => !openIds.has(group.id))
+          .map((group) => ({
+            id: group.id,
+            type: "remembered",
+            name: group.name,
+            color: group.color,
+            order: group.order
+          }))
+      : [];
 
   const orderedGroups = [...matchedOpenGroups, ...rememberedMenuGroups].sort(
     (first, second) => first.order - second.order
@@ -651,7 +654,9 @@ async function openRememberedGroup(groupId, options = {}) {
 
 function onMessage(message) {
   if (message?.type === "getMenuGroups") {
-    return getMenuGroups();
+    return getMenuGroups({
+      includeRememberedGroups: message.includeRememberedGroups === true
+    });
   }
 
   if (message?.type === "activateOpenGroup") {

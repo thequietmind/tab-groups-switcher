@@ -4,7 +4,8 @@ const api = globalThis.browser;
 const storageKey = "rememberedGroups";
 const settingsKey = "settings";
 const defaultSettings = {
-  minimizeOtherTabGroupsWhenSwitching: false
+  minimizeOtherTabGroupsWhenSwitching: false,
+  showRememberedClosedGroups: false
 };
 const colorOptions = new Set([
   "blue",
@@ -18,18 +19,6 @@ const colorOptions = new Set([
   "red",
   "yellow"
 ]);
-const colorMap = {
-  blue: "#45a1ff",
-  cyan: "#00c8d7",
-  gray: "#9aa0a6",
-  grey: "#9aa0a6",
-  green: "#12bc00",
-  orange: "#ff9400",
-  pink: "#ff4aa2",
-  purple: "#ab71ff",
-  red: "#ff4f5e",
-  yellow: "#d7b600"
-};
 const state = {
   groups: [],
   draggedId: null,
@@ -39,7 +28,10 @@ const state = {
 const elements = {
   list: document.querySelector("#groups-list"),
   status: document.querySelector("#status"),
-  minimizeOtherGroups: document.querySelector("#minimize-other-groups")
+  minimizeOtherGroups: document.querySelector("#minimize-other-groups"),
+  showRememberedClosedGroups: document.querySelector(
+    "#show-remembered-closed-groups"
+  )
 };
 
 function setStatus(message) {
@@ -85,8 +77,9 @@ async function loadOptions() {
 
 function renderSettings() {
   elements.minimizeOtherGroups.checked =
-    state.settings.minimizeOtherTabGroupsWhenSwitching === true ||
-    state.settings.closeOtherTabGroupsWhenSwitching === true;
+    state.settings.minimizeOtherTabGroupsWhenSwitching === true;
+  elements.showRememberedClosedGroups.checked =
+    state.settings.showRememberedClosedGroups === true;
 }
 
 async function saveSettings(message = "Settings saved.") {
@@ -139,10 +132,6 @@ function createGroupRow(group) {
   handle.textContent = "⋮⋮";
   handle.setAttribute("aria-hidden", "true");
 
-  const dot = document.createElement("span");
-  dot.className = "color-dot";
-  dot.style.setProperty("--indicator", colorMap[group.color] ?? colorMap.grey);
-
   const name = document.createElement("span");
   name.className = "group-name";
   name.textContent = group.name;
@@ -176,15 +165,20 @@ function createGroupRow(group) {
     renderGroups();
   });
 
-  row.append(handle, dot, name);
+  row.append(handle, name);
   return row;
 }
 
 elements.minimizeOtherGroups.addEventListener("change", async () => {
   state.settings.minimizeOtherTabGroupsWhenSwitching =
     elements.minimizeOtherGroups.checked;
-  delete state.settings.closeOtherTabGroupsWhenSwitching;
   await saveSettings("Switching behavior saved.");
+});
+
+elements.showRememberedClosedGroups.addEventListener("change", async () => {
+  state.settings.showRememberedClosedGroups =
+    elements.showRememberedClosedGroups.checked;
+  await saveSettings("Remembered group visibility saved.");
 });
 
 loadOptions().catch((error) => {

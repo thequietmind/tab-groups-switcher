@@ -64,6 +64,8 @@ h1 {
 }
 
 .settings-panel {
+  display: grid;
+  gap: 10px;
   margin-bottom: 14px;
   padding: 12px;
 }
@@ -73,6 +75,13 @@ h1 {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+}
+
+.helper-text {
+  margin: -2px 0 0 24px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .groups-list {
@@ -90,7 +99,7 @@ h1 {
 
 .group-row {
   display: grid;
-  grid-template-columns: 18px 12px minmax(0, 1fr);
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   min-height: 38px;
@@ -115,15 +124,6 @@ h1 {
   font-size: 13px;
   line-height: 1;
   text-align: center;
-}
-
-.color-dot {
-  width: 12px;
-  height: 12px;
-  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
-  border-radius: 50%;
-  background: var(--indicator);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, Canvas 18%, transparent);
 }
 
 .group-name {

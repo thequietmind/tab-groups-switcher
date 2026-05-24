@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Tab Groups Menu",
+  "name": "Tab Groups Switcher",
   "version": "0.1.0",
-  "description": "Show Firefox tab groups in a compact toolbar popup.",
+  "description": "Switch between open Firefox tab groups in a compact toolbar popup.",
   "permissions": [
     "menus",
     "storage",
@@ -15,7 +15,7 @@
     ]
   },
   "action": {
-    "default_title": "Tab Groups Menu",
+    "default_title": "Tab Groups Switcher",
     "default_popup": "popup.html",
     "default_icon": "icons/icon.svg"
   },
