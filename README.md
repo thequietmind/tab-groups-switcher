@@ -104,6 +104,24 @@ it. If it is closed, the extension recreates the group from the URLs it
 previously remembered, then reconciles the new live group back into the existing
 remembered record so the popup does not show duplicate entries.
 
+## Development
+
+To create a zip archive for uploading to the Add-on Developer Hub:
+
+```sh
+zip -r ../tab-groups-switcher.zip \
+  manifest.json \
+  background.js \
+  popup.html \
+  popup.css \
+  popup.js \
+  options.html \
+  options.css \
+  options.js \
+  README.md \
+  icons
+```
+
 ## Limitations
 
 This extension does not read Firefox profile files, inspect sessionstore
