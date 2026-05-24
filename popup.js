@@ -3,7 +3,7 @@
 const api = globalThis.browser;
 const settingsKey = "settings";
 const defaultSettings = {
-  minimizeOtherTabGroupsWhenSwitching: false,
+  minimizeOtherTabGroupsWhenSwitching: true,
   showRememberedClosedGroups: false
 };
 const state = {

@@ -4,7 +4,7 @@ const api = globalThis.browser;
 const storageKey = "rememberedGroups";
 const settingsKey = "settings";
 const defaultSettings = {
-  minimizeOtherTabGroupsWhenSwitching: false,
+  minimizeOtherTabGroupsWhenSwitching: true,
   showRememberedClosedGroups: false
 };
 const colorOptions = new Set([

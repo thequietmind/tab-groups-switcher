@@ -38,9 +38,9 @@ duplicate Firefox's own saved groups when those saved groups still exist.
 9. Disable **Show remembered closed tab groups** and confirm remembered groups
    are hidden again.
 10. Open the extension options page and confirm tracked groups can be reordered.
-11. Enable **Minimize other tab groups when switching**, switch groups from the
-    popup, and confirm other open groups collapse while ungrouped tabs remain
-    open.
+11. Confirm **Minimize other tab groups when switching** is enabled, switch
+    groups from the popup, and confirm other open groups collapse while
+    ungrouped tabs remain open.
 
 If the popup says `Firefox tab group extension APIs are not available in this
 browser version.`, update Firefox to a version that supports the
@@ -86,10 +86,10 @@ The ordering list is intentionally simple and only shows tracked group names.
 
 ## Switching Behavior
 
-By default, switching groups leaves all other open groups alone. If **Minimize
-other tab groups when switching** is enabled, the extension first focuses or
-recreates the selected group, then collapses the other open tab groups.
-Ungrouped tabs are not changed.
+By default, switching groups first focuses or recreates the selected group, then
+collapses the other open tab groups. Ungrouped tabs are not changed. Disable
+**Minimize other tab groups when switching** if you want other open groups to
+stay expanded.
 
 ## Restore Behavior
 
