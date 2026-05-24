@@ -1,0 +1,172 @@
+:root {
+  color-scheme: light dark;
+  --background: Canvas;
+  --foreground: CanvasText;
+  --muted: color-mix(in srgb, CanvasText 62%, Canvas);
+  --border: color-mix(in srgb, CanvasText 18%, Canvas);
+  --hover: color-mix(in srgb, AccentColor 12%, Canvas);
+  --active: color-mix(in srgb, AccentColor 18%, Canvas);
+  --focus: AccentColor;
+  --indicator: AccentColor;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 320px;
+  max-width: 320px;
+  background: var(--background);
+  color: var(--foreground);
+  font: menu;
+}
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.window-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.window-toggle input {
+  margin: 0;
+}
+
+.search-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.search-input {
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.search-input:focus-visible,
+.group-button:focus-visible,
+.window-toggle input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.status:empty {
+  display: none;
+}
+
+.groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.group-button {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-button:hover {
+  background: var(--hover);
+}
+
+.group-button:active {
+  background: var(--active);
+}
+
+.color-dot {
+  width: 10px;
+  height: 10px;
+  border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  border-radius: 50%;
+  background: var(--indicator);
+}
+
+.group-text {
+  min-width: 0;
+}
+
+.group-title {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-detail {
+  margin-top: 1px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-count {
+  min-width: 28px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+}

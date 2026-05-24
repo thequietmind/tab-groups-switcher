@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Groups Menu",
+  "version": "0.1.0",
+  "description": "Show Firefox tab groups in a compact toolbar popup.",
+  "permissions": [
+    "tabs",
+    "tabGroups"
+  ],
+  "action": {
+    "default_title": "Tab Groups Menu",
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon.svg"
+  },
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  }
+}
