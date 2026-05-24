@@ -6,7 +6,7 @@ const settingsKey = "settings";
 const defaultSettings = {
   closeOtherTabGroupsWhenSwitching: false
 };
-const colorOptions = [
+const colorOptions = new Set([
   "grey",
   "blue",
   "cyan",
@@ -16,7 +16,19 @@ const colorOptions = [
   "purple",
   "red",
   "yellow"
-];
+]);
+const colorMap = {
+  blue: "#45a1ff",
+  cyan: "#00c8d7",
+  gray: "#9aa0a6",
+  grey: "#9aa0a6",
+  green: "#12bc00",
+  orange: "#ff9400",
+  pink: "#ff4aa2",
+  purple: "#ab71ff",
+  red: "#ff4f5e",
+  yellow: "#d7b600"
+};
 const state = {
   groups: [],
   draggedId: null,
@@ -26,8 +38,6 @@ const state = {
 const elements = {
   list: document.querySelector("#groups-list"),
   status: document.querySelector("#status"),
-  exportButton: document.querySelector("#export-button"),
-  importInput: document.querySelector("#import-input"),
   closeOtherGroups: document.querySelector("#close-other-groups")
 };
 
@@ -39,11 +49,12 @@ function normalizeGroup(group, index) {
   const now = Date.now();
   const urls = Array.isArray(group.urls) ? group.urls.filter(Boolean) : [];
   const titles = Array.isArray(group.titles) ? group.titles : [];
+  const color = colorOptions.has(group.color) ? group.color : "grey";
 
   return {
-    id: String(group.id || `imported-${now}-${index}`),
+    id: String(group.id || `remembered-${now}-${index}`),
     name: String(group.name || "Untitled group"),
-    color: colorOptions.includes(group.color) ? group.color : "grey",
+    color,
     urls,
     titles: urls.map((_, urlIndex) => String(titles[urlIndex] ?? "")),
     order: Number.isFinite(group.order) ? group.order : index,
@@ -81,14 +92,13 @@ async function saveSettings(message = "Settings saved.") {
   setStatus(message);
 }
 
-async function saveGroups(message = "Saved.") {
+async function saveGroups(message = "Order saved.") {
   state.groups = state.groups.map((group, index) => ({
     ...group,
     order: index,
     updatedAt: Date.now()
   }));
   await api.storage.local.set({ [storageKey]: state.groups });
-
   setStatus(message);
 }
 
@@ -110,143 +120,41 @@ function renderGroups() {
   const fragment = document.createDocumentFragment();
 
   for (const group of state.groups) {
-    fragment.append(createGroupEditor(group));
+    fragment.append(createGroupRow(group));
   }
 
   elements.list.append(fragment);
 }
 
-function createTextInput(group, property, labelText) {
-  const label = document.createElement("label");
-  label.textContent = labelText;
-  const input = document.createElement("input");
-  input.value = group[property];
-  input.addEventListener("change", async () => {
-    group[property] = input.value.trim() || "Untitled group";
-    await saveGroups("Group updated.");
-  });
-  label.append(input);
-  return label;
-}
+function createGroupRow(group) {
+  const row = document.createElement("article");
+  row.className = "group-row";
+  row.draggable = true;
+  row.dataset.id = group.id;
 
-function createColorSelect(group) {
-  const label = document.createElement("label");
-  label.textContent = "Color";
-  const select = document.createElement("select");
+  const handle = document.createElement("span");
+  handle.className = "drag-handle";
+  handle.textContent = "⋮⋮";
+  handle.setAttribute("aria-hidden", "true");
 
-  for (const color of colorOptions) {
-    const option = document.createElement("option");
-    option.value = color;
-    option.textContent = color;
-    option.selected = group.color === color;
-    select.append(option);
-  }
+  const dot = document.createElement("span");
+  dot.className = "color-dot";
+  dot.style.setProperty("--indicator", colorMap[group.color] ?? colorMap.grey);
 
-  select.addEventListener("change", async () => {
-    group.color = select.value;
-    await saveGroups("Color updated.");
-  });
-  label.append(select);
-  return label;
-}
+  const name = document.createElement("span");
+  name.className = "group-name";
+  name.textContent = group.name;
 
-function createUrlsField(group) {
-  const label = document.createElement("label");
-  label.className = "urls-field";
-  label.textContent = "URLs";
-  const textarea = document.createElement("textarea");
-  textarea.spellcheck = false;
-  textarea.value = group.urls.join("\n");
-  textarea.addEventListener("change", async () => {
-    const urls = textarea.value
-      .split(/\n+/)
-      .map((url) => url.trim())
-      .filter(Boolean);
-    group.urls = urls;
-    group.titles = urls.map((_, index) => group.titles[index] ?? "");
-    await saveGroups("URLs updated.");
-  });
-  label.append(textarea);
-  return label;
-}
-
-function createActionButton(label, onClick, className) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = label;
-
-  if (className) {
-    button.className = className;
-  }
-
-  button.addEventListener("click", onClick);
-  return button;
-}
-
-function moveGroup(id, direction) {
-  const currentIndex = state.groups.findIndex((group) => group.id === id);
-  const nextIndex = currentIndex + direction;
-
-  if (currentIndex === -1 || nextIndex < 0 || nextIndex >= state.groups.length) {
-    return;
-  }
-
-  const [group] = state.groups.splice(currentIndex, 1);
-  state.groups.splice(nextIndex, 0, group);
-}
-
-function deleteGroup(id) {
-  state.groups = state.groups.filter((group) => group.id !== id);
-}
-
-function createGroupEditor(group) {
-  const editor = document.createElement("article");
-  editor.className = "group-editor";
-  editor.draggable = true;
-  editor.dataset.id = group.id;
-
-  const fields = document.createElement("div");
-  fields.className = "fields";
-  fields.append(
-    createTextInput(group, "name", "Name"),
-    createColorSelect(group),
-    createUrlsField(group)
-  );
-
-  const actions = document.createElement("div");
-  actions.className = "actions";
-  actions.append(
-    createActionButton("Up", async () => {
-      moveGroup(group.id, -1);
-      await saveGroups("Order updated.");
-      renderGroups();
-    }),
-    createActionButton("Down", async () => {
-      moveGroup(group.id, 1);
-      await saveGroups("Order updated.");
-      renderGroups();
-    }),
-    createActionButton(
-      "Delete",
-      async () => {
-        deleteGroup(group.id);
-        await saveGroups("Group deleted.");
-        renderGroups();
-      },
-      "delete-button"
-    )
-  );
-
-  editor.addEventListener("dragstart", () => {
+  row.addEventListener("dragstart", () => {
     state.draggedId = group.id;
-    editor.classList.add("dragging");
+    row.classList.add("dragging");
   });
-  editor.addEventListener("dragend", () => {
+  row.addEventListener("dragend", () => {
     state.draggedId = null;
-    editor.classList.remove("dragging");
+    row.classList.remove("dragging");
   });
-  editor.addEventListener("dragover", (event) => event.preventDefault());
-  editor.addEventListener("drop", async (event) => {
+  row.addEventListener("dragover", (event) => event.preventDefault());
+  row.addEventListener("drop", async (event) => {
     event.preventDefault();
 
     if (!state.draggedId || state.draggedId === group.id) {
@@ -262,62 +170,18 @@ function createGroupEditor(group) {
 
     const [draggedGroup] = state.groups.splice(draggedIndex, 1);
     state.groups.splice(targetIndex, 0, draggedGroup);
-    await saveGroups("Order updated.");
+    await saveGroups();
     renderGroups();
   });
 
-  editor.append(fields, actions);
-  return editor;
+  row.append(handle, dot, name);
+  return row;
 }
 
-function exportGroups() {
-  const data = JSON.stringify({ [storageKey]: state.groups }, null, 2);
-  const blob = new Blob([data], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "tab-groups-menu-backup.json";
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-async function importGroups(file) {
-  const text = await file.text();
-  const parsed = JSON.parse(text);
-  const importedGroups = Array.isArray(parsed)
-    ? parsed
-    : parsed?.[storageKey];
-
-  if (!Array.isArray(importedGroups)) {
-    throw new Error("Backup JSON must contain an array of groups.");
-  }
-
-  state.groups = importedGroups.map(normalizeGroup);
-  await saveGroups("Backup imported.");
-  renderGroups();
-}
-
-elements.exportButton.addEventListener("click", exportGroups);
 elements.closeOtherGroups.addEventListener("change", async () => {
   state.settings.closeOtherTabGroupsWhenSwitching =
     elements.closeOtherGroups.checked;
   await saveSettings("Switching behavior saved.");
-});
-elements.importInput.addEventListener("change", async () => {
-  const [file] = elements.importInput.files;
-
-  if (!file) {
-    return;
-  }
-
-  try {
-    await importGroups(file);
-  } catch (error) {
-    console.error(error);
-    setStatus(`Import failed. ${error?.message ?? error}`);
-  } finally {
-    elements.importInput.value = "";
-  }
 });
 
 loadOptions().catch((error) => {

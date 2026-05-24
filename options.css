@@ -6,7 +6,6 @@
   --border: color-mix(in srgb, CanvasText 18%, Canvas);
   --hover: color-mix(in srgb, AccentColor 12%, Canvas);
   --focus: AccentColor;
-  --danger: #c50042;
 }
 
 * {
@@ -20,50 +19,27 @@ body {
   font: menu;
 }
 
-button,
-input,
-select,
-textarea {
+input {
   font: inherit;
 }
 
-button,
-.import-button {
-  min-height: 32px;
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: ButtonFace;
-  color: ButtonText;
-  cursor: pointer;
-}
-
-button:hover,
-.import-button:hover {
-  background: var(--hover);
-}
-
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
+input:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
 .options {
-  width: min(860px, 100%);
+  width: min(520px, 100%);
   margin: 0 auto;
-  padding: 24px;
+  padding: 28px 20px;
 }
 
 .page-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 h1 {
@@ -80,129 +56,78 @@ h1 {
   font-size: 13px;
 }
 
-.toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+.settings-panel,
+.groups-list {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, Canvas 94%, CanvasText);
 }
 
 .settings-panel {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
   padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
 }
 
-.import-button {
-  display: inline-flex;
+.checkbox-label {
+  display: flex;
   align-items: center;
-}
-
-.import-button input {
-  display: none;
+  gap: 8px;
+  font-size: 13px;
 }
 
 .groups-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  overflow: hidden;
 }
 
 .empty {
   margin: 0;
-  padding: 12px 0;
+  padding: 14px 12px;
   color: var(--muted);
-}
-
-.group-editor {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.group-editor[draggable="true"] {
-  cursor: grab;
-}
-
-.group-editor.dragging {
-  opacity: 0.55;
-}
-
-.fields {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) 130px;
-  gap: 10px;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.checkbox-label {
-  flex-direction: row;
-  align-items: center;
-  color: var(--foreground);
   font-size: 13px;
 }
 
-.checkbox-label input {
-  width: auto;
+.group-row {
+  display: grid;
+  grid-template-columns: 18px 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
 }
 
-input,
-select,
-textarea {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: Field;
-  color: FieldText;
+.group-row:last-child {
+  border-bottom: 0;
 }
 
-input,
-select {
-  min-height: 32px;
-  padding: 4px 8px;
+.group-row[draggable="true"] {
+  cursor: grab;
 }
 
-textarea {
-  min-height: 96px;
-  padding: 8px;
-  resize: vertical;
+.group-row.dragging {
+  opacity: 0.55;
 }
 
-.urls-field {
-  grid-column: 1 / -1;
+.drag-handle {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  text-align: center;
 }
 
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.color-dot {
+  width: 12px;
+  height: 12px;
+  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border-radius: 50%;
+  background: var(--indicator);
 }
 
-.delete-button {
-  color: var(--danger);
-}
-
-@media (max-width: 640px) {
-  .options {
-    padding: 16px;
-  }
-
-  .group-editor,
-  .fields {
-    grid-template-columns: 1fr;
-  }
-
-  .actions {
-    flex-flow: row wrap;
-  }
+.group-name {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
