@@ -4,13 +4,21 @@
   "version": "0.1.0",
   "description": "Show Firefox tab groups in a compact toolbar popup.",
   "permissions": [
+    "storage",
     "tabs",
     "tabGroups"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_title": "Tab Groups Menu",
     "default_popup": "popup.html",
     "default_icon": "icons/icon.svg"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
   "icons": {
     "48": "icons/icon.svg",

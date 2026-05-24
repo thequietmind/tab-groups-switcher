@@ -1,0 +1,190 @@
+:root {
+  color-scheme: light dark;
+  --background: Canvas;
+  --foreground: CanvasText;
+  --muted: color-mix(in srgb, CanvasText 58%, Canvas);
+  --border: color-mix(in srgb, CanvasText 18%, Canvas);
+  --hover: color-mix(in srgb, AccentColor 12%, Canvas);
+  --focus: AccentColor;
+  --danger: #c50042;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font: menu;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+.import-button {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: ButtonFace;
+  color: ButtonText;
+  cursor: pointer;
+}
+
+button:hover,
+.import-button:hover {
+  background: var(--hover);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.options {
+  width: min(860px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.status {
+  min-height: 20px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.import-button {
+  display: inline-flex;
+  align-items: center;
+}
+
+.import-button input {
+  display: none;
+}
+
+.groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.empty {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--muted);
+}
+
+.group-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.group-editor[draggable="true"] {
+  cursor: grab;
+}
+
+.group-editor.dragging {
+  opacity: 0.55;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 130px;
+  gap: 10px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: Field;
+  color: FieldText;
+}
+
+input,
+select {
+  min-height: 32px;
+  padding: 4px 8px;
+}
+
+textarea {
+  min-height: 96px;
+  padding: 8px;
+  resize: vertical;
+}
+
+.urls-field {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.delete-button {
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .options {
+    padding: 16px;
+  }
+
+  .group-editor,
+  .fields {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-flow: row wrap;
+  }
+}
