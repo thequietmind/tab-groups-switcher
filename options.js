@@ -7,9 +7,10 @@ const defaultSettings = {
   closeOtherTabGroupsWhenSwitching: false
 };
 const colorOptions = new Set([
-  "grey",
   "blue",
   "cyan",
+  "gray",
+  "grey",
   "green",
   "orange",
   "pink",

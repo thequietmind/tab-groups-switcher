@@ -123,6 +123,7 @@ h1 {
   border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
   border-radius: 50%;
   background: var(--indicator);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, Canvas 18%, transparent);
 }
 
 .group-name {
