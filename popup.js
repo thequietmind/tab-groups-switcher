@@ -3,7 +3,7 @@
 const api = globalThis.browser;
 const settingsKey = "settings";
 const defaultSettings = {
-  closeOtherTabGroupsWhenSwitching: false
+  minimizeOtherTabGroupsWhenSwitching: false
 };
 const state = {
   groups: []
@@ -134,7 +134,9 @@ async function activateGroup(group) {
   try {
     setStatus("");
     const settings = await loadSettings();
-    const closeOtherGroups = settings.closeOtherTabGroupsWhenSwitching === true;
+    const minimizeOtherGroups =
+      settings.minimizeOtherTabGroupsWhenSwitching === true ||
+      settings.closeOtherTabGroupsWhenSwitching === true;
 
     if (group.type === "open") {
       await api.runtime.sendMessage({
@@ -142,13 +144,13 @@ async function activateGroup(group) {
         groupId: group.groupId,
         windowId: group.windowId,
         tabId: group.tabId,
-        closeOtherGroups
+        minimizeOtherGroups
       });
     } else {
       await api.runtime.sendMessage({
         type: "openRememberedGroup",
         id: group.id,
-        closeOtherGroups
+        minimizeOtherGroups
       });
     }
 

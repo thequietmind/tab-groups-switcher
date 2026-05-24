@@ -4,7 +4,7 @@ const api = globalThis.browser;
 const storageKey = "rememberedGroups";
 const settingsKey = "settings";
 const defaultSettings = {
-  closeOtherTabGroupsWhenSwitching: false
+  minimizeOtherTabGroupsWhenSwitching: false
 };
 const colorOptions = new Set([
   "blue",
@@ -39,7 +39,7 @@ const state = {
 const elements = {
   list: document.querySelector("#groups-list"),
   status: document.querySelector("#status"),
-  closeOtherGroups: document.querySelector("#close-other-groups")
+  minimizeOtherGroups: document.querySelector("#minimize-other-groups")
 };
 
 function setStatus(message) {
@@ -84,7 +84,8 @@ async function loadOptions() {
 }
 
 function renderSettings() {
-  elements.closeOtherGroups.checked =
+  elements.minimizeOtherGroups.checked =
+    state.settings.minimizeOtherTabGroupsWhenSwitching === true ||
     state.settings.closeOtherTabGroupsWhenSwitching === true;
 }
 
@@ -179,9 +180,10 @@ function createGroupRow(group) {
   return row;
 }
 
-elements.closeOtherGroups.addEventListener("change", async () => {
-  state.settings.closeOtherTabGroupsWhenSwitching =
-    elements.closeOtherGroups.checked;
+elements.minimizeOtherGroups.addEventListener("change", async () => {
+  state.settings.minimizeOtherTabGroupsWhenSwitching =
+    elements.minimizeOtherGroups.checked;
+  delete state.settings.closeOtherTabGroupsWhenSwitching;
   await saveSettings("Switching behavior saved.");
 });
 

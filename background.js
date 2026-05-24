@@ -519,25 +519,18 @@ async function getMenuGroups() {
   return [...orderedGroups, ...unmatchedOpenGroups].map(({ order, ...group }) => group);
 }
 
-async function closeOtherOpenTabGroups(selectedGroupId) {
-  if (selectedGroupId === undefined || !api?.tabs?.query || !api?.tabs?.remove) {
+async function minimizeOtherOpenTabGroups(selectedGroupId) {
+  if (selectedGroupId === undefined || !api?.tabGroups?.query || !api?.tabGroups?.update) {
     return;
   }
 
-  const tabs = await api.tabs.query({});
-  const tabIdsToClose = tabs
-    .filter((tab) => {
-      return (
-        tab.id !== undefined &&
-        tab.groupId !== undefined &&
-        tab.groupId !== ungroupedId &&
-        tab.groupId !== selectedGroupId
-      );
-    })
-    .map((tab) => tab.id);
+  const groups = await api.tabGroups.query({});
+  const groupIdsToMinimize = groups
+    .map(getGroupId)
+    .filter((groupId) => groupId !== undefined && groupId !== selectedGroupId);
 
-  if (tabIdsToClose.length > 0) {
-    await api.tabs.remove(tabIdsToClose);
+  for (const groupId of groupIdsToMinimize) {
+    await api.tabGroups.update(groupId, { collapsed: true });
   }
 }
 
@@ -554,8 +547,8 @@ async function activateOpenGroup(groupId, windowId, tabId, options = {}) {
     await api.tabs.update(tabId, { active: true });
   }
 
-  if (options.closeOtherGroups) {
-    await closeOtherOpenTabGroups(groupId);
+  if (options.minimizeOtherGroups) {
+    await minimizeOtherOpenTabGroups(groupId);
   }
 }
 
@@ -628,8 +621,8 @@ async function recreateRememberedGroup(rememberedGroup, options = {}) {
     await api.tabs.update(firstTab.id, { active: true });
   }
 
-  if (options.closeOtherGroups) {
-    await closeOtherOpenTabGroups(groupIdResult);
+  if (options.minimizeOtherGroups) {
+    await minimizeOtherOpenTabGroups(groupIdResult);
   }
 
   await updateRememberedGroup(rememberedGroup.id, {
@@ -663,13 +656,13 @@ function onMessage(message) {
 
   if (message?.type === "activateOpenGroup") {
     return activateOpenGroup(message.groupId, message.windowId, message.tabId, {
-      closeOtherGroups: message.closeOtherGroups === true
+      minimizeOtherGroups: message.minimizeOtherGroups === true
     });
   }
 
   if (message?.type === "openRememberedGroup") {
     return openRememberedGroup(message.id, {
-      closeOtherGroups: message.closeOtherGroups === true
+      minimizeOtherGroups: message.minimizeOtherGroups === true
     });
   }
 

@@ -21,7 +21,7 @@ Firefox does not currently expose native saved tab groups to WebExtensions. This
 5. Reopen the popup and confirm the remembered group remains without duplicating any currently open group.
 6. Click the remembered group and confirm its tabs reopen in a recreated tab group with the saved title and color.
 7. Open the extension options page and confirm remembered groups can be reordered.
-8. Enable **Close other tab groups when switching**, switch groups from the popup, and confirm other open groups close while ungrouped tabs remain open.
+8. Enable **Minimize other tab groups when switching**, switch groups from the popup, and confirm other open groups collapse while ungrouped tabs remain open.
 
 If the popup says `Firefox tab group extension APIs are not available in this browser version.`, update Firefox to a version that supports the `browser.tabGroups` WebExtensions API.
 
@@ -37,14 +37,14 @@ Matching favors exact URL signatures, then normalized group names plus URL overl
 
 Open the extension options page to manage remembered groups:
 
-- Reorder with drag and drop or the Up/Down buttons.
-- Toggle whether switching to a group closes other currently open tab groups.
+- Reorder with drag and drop.
+- Toggle whether switching to a group minimizes other currently open tab groups.
 
 The popup respects the saved manual order for remembered groups. Matching open groups use the same saved order, and newly discovered open groups are appended until the extension records them.
 
 ## Switching Behavior
 
-By default, switching groups leaves all other open groups alone. If **Close other tab groups when switching** is enabled, the extension first focuses or recreates the selected group, then closes tabs belonging to other open tab groups. Ungrouped tabs are not closed.
+By default, switching groups leaves all other open groups alone. If **Minimize other tab groups when switching** is enabled, the extension first focuses or recreates the selected group, then collapses the other open tab groups. Ungrouped tabs are not changed.
 
 ## Restore Behavior
 
