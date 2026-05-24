@@ -23,3 +23,10 @@ If the popup says `Firefox tab group extension APIs are not available in this br
 Firefox's native tab groups menu can show recently saved or closed tab groups, but current WebExtensions APIs do not expose those groups directly. The `browser.tabGroups` API exposes tab groups with visible/open tab state, while the `browser.sessions` API restores closed tabs or windows and does not expose tab group IDs for saved groups.
 
 Because of that API limitation, this extension lists all currently exposed open tab groups in one native-feeling flat menu. It does not create fake saved groups or maintain separate extension-owned persistence.
+
+## Bugzilla Tracking
+
+- [Bug 1940631: Implement tabGroups WebExtensions API](https://bugzilla.mozilla.org/show_bug.cgi?id=1940631)
+- [Bug 1927769: Allow sessions.restore WebExtension API to understand tab groups](https://bugzilla.mozilla.org/show_bug.cgi?id=1927769)
+- [Bug 1968190: Tabs closed in tab groups are not properly reported to restore-closed-tabs add-ons](https://bugzilla.mozilla.org/show_bug.cgi?id=1968190)
+- [Bug 1979759: Saved-and-closed tab groups should appear in Recently Closed Tabs](https://bugzilla.mozilla.org/show_bug.cgi?id=1979759)
