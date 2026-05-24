@@ -34,8 +34,7 @@ const colorMap = {
 const state = {
   groups: [],
   draggedId: null,
-  dropTargetId: null,
-  dropPosition: null,
+  dropIndex: null,
   settings: { ...defaultSettings }
 };
 
@@ -47,6 +46,9 @@ const elements = {
     "#show-remembered-closed-groups"
   )
 };
+const dropMarker = document.createElement("div");
+dropMarker.className = "drop-marker";
+dropMarker.setAttribute("aria-hidden", "true");
 
 function setStatus(message) {
   elements.status.textContent = message;
@@ -160,14 +162,14 @@ function createGroupRow(group) {
   });
   row.addEventListener("dragend", () => {
     state.draggedId = null;
-    clearDropTarget();
+    clearDropMarker();
     row.classList.remove("dragging");
   });
   row.addEventListener("dragover", (event) => {
     event.preventDefault();
 
     if (!state.draggedId || state.draggedId === group.id) {
-      clearDropTarget();
+      clearDropMarker();
       return;
     }
 
@@ -175,65 +177,77 @@ function createGroupRow(group) {
     const position =
       event.clientY < rowBounds.top + rowBounds.height / 2 ? "before" : "after";
 
-    setDropTarget(row, group.id, position);
-  });
-  row.addEventListener("dragleave", (event) => {
-    if (!row.contains(event.relatedTarget)) {
-      clearDropTarget();
-    }
-  });
-  row.addEventListener("drop", async (event) => {
-    event.preventDefault();
-
-    if (!state.draggedId || state.draggedId === group.id) {
-      clearDropTarget();
-      return;
-    }
-
-    const draggedIndex = state.groups.findIndex((item) => item.id === state.draggedId);
     const targetIndex = state.groups.findIndex((item) => item.id === group.id);
-
-    if (draggedIndex === -1 || targetIndex === -1) {
-      return;
-    }
-
-    const [draggedGroup] = state.groups.splice(draggedIndex, 1);
-    const adjustedTargetIndex =
-      draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
-    const nextIndex =
-      state.dropPosition === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex;
-
-    state.groups.splice(nextIndex, 0, draggedGroup);
-    clearDropTarget();
-    await saveGroups();
-    renderGroups();
+    setDropMarker(row, position, targetIndex);
   });
 
   row.append(handle, dot, name);
   return row;
 }
 
-function clearDropTarget() {
-  const currentTarget = elements.list.querySelector(".drop-before, .drop-after");
-
-  if (currentTarget) {
-    currentTarget.classList.remove("drop-before", "drop-after");
+function clearDropMarker() {
+  if (dropMarker.parentElement) {
+    dropMarker.remove();
   }
 
-  state.dropTargetId = null;
-  state.dropPosition = null;
+  state.dropIndex = null;
 }
 
-function setDropTarget(row, groupId, position) {
-  if (state.dropTargetId === groupId && state.dropPosition === position) {
+function setDropMarker(row, position, targetIndex) {
+  const dropIndex = position === "after" ? targetIndex + 1 : targetIndex;
+
+  if (state.dropIndex === dropIndex && dropMarker.parentElement) {
     return;
   }
 
-  clearDropTarget();
-  state.dropTargetId = groupId;
-  state.dropPosition = position;
-  row.classList.add(position === "before" ? "drop-before" : "drop-after");
+  state.dropIndex = dropIndex;
+
+  if (position === "after") {
+    row.after(dropMarker);
+    return;
+  }
+
+  row.before(dropMarker);
 }
+
+async function dropDraggedGroup() {
+  if (!state.draggedId || state.dropIndex === null) {
+    clearDropMarker();
+    return;
+  }
+
+  const draggedIndex = state.groups.findIndex((item) => item.id === state.draggedId);
+
+  if (draggedIndex === -1) {
+    clearDropMarker();
+    return;
+  }
+
+  const [draggedGroup] = state.groups.splice(draggedIndex, 1);
+  const adjustedDropIndex =
+    draggedIndex < state.dropIndex ? state.dropIndex - 1 : state.dropIndex;
+  const nextIndex = Math.min(
+    Math.max(adjustedDropIndex, 0),
+    state.groups.length
+  );
+
+  clearDropMarker();
+
+  if (nextIndex === draggedIndex) {
+    state.groups.splice(draggedIndex, 0, draggedGroup);
+    return;
+  }
+
+  state.groups.splice(nextIndex, 0, draggedGroup);
+  await saveGroups();
+  renderGroups();
+}
+
+elements.list.addEventListener("dragover", (event) => event.preventDefault());
+elements.list.addEventListener("drop", async (event) => {
+  event.preventDefault();
+  await dropDraggedGroup();
+});
 
 elements.minimizeOtherGroups.addEventListener("change", async () => {
   state.settings.minimizeOtherTabGroupsWhenSwitching =

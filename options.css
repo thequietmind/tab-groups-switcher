@@ -98,7 +98,6 @@ h1 {
 }
 
 .group-row {
-  position: relative;
   display: grid;
   grid-template-columns: 18px 12px minmax(0, 1fr);
   align-items: center;
@@ -120,23 +119,24 @@ h1 {
   opacity: 0.55;
 }
 
-.group-row.drop-before::before,
-.group-row.drop-after::after {
+.drop-marker {
+  position: relative;
+  min-height: 30px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, AccentColor 10%, Canvas);
+}
+
+.drop-marker::before {
   position: absolute;
+  top: 50%;
   right: 8px;
   left: 8px;
-  height: 2px;
+  height: 3px;
   border-radius: 999px;
   background: var(--focus);
+  box-shadow: 0 0 0 4px color-mix(in srgb, AccentColor 14%, transparent);
   content: "";
-}
-
-.group-row.drop-before::before {
-  top: -1px;
-}
-
-.group-row.drop-after::after {
-  bottom: -1px;
+  transform: translateY(-50%);
 }
 
 .drag-handle {
