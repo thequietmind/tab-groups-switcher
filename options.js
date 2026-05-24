@@ -2,6 +2,10 @@
 
 const api = globalThis.browser;
 const storageKey = "rememberedGroups";
+const settingsKey = "settings";
+const defaultSettings = {
+  closeOtherTabGroupsWhenSwitching: false
+};
 const colorOptions = [
   "grey",
   "blue",
@@ -15,14 +19,16 @@ const colorOptions = [
 ];
 const state = {
   groups: [],
-  draggedId: null
+  draggedId: null,
+  settings: { ...defaultSettings }
 };
 
 const elements = {
   list: document.querySelector("#groups-list"),
   status: document.querySelector("#status"),
   exportButton: document.querySelector("#export-button"),
-  importInput: document.querySelector("#import-input")
+  importInput: document.querySelector("#import-input"),
+  closeOtherGroups: document.querySelector("#close-other-groups")
 };
 
 function setStatus(message) {
@@ -47,14 +53,32 @@ function normalizeGroup(group, index) {
   };
 }
 
-async function loadGroups() {
-  const result = await api.storage.local.get({ [storageKey]: [] });
+async function loadOptions() {
+  const result = await api.storage.local.get({
+    [storageKey]: [],
+    [settingsKey]: defaultSettings
+  });
   const groups = Array.isArray(result[storageKey]) ? result[storageKey] : [];
+  state.settings = {
+    ...defaultSettings,
+    ...(result[settingsKey] ?? {})
+  };
   state.groups = groups
     .map(normalizeGroup)
     .sort((first, second) => first.order - second.order)
     .map((group, index) => ({ ...group, order: index }));
+  renderSettings();
   renderGroups();
+}
+
+function renderSettings() {
+  elements.closeOtherGroups.checked =
+    state.settings.closeOtherTabGroupsWhenSwitching === true;
+}
+
+async function saveSettings(message = "Settings saved.") {
+  await api.storage.local.set({ [settingsKey]: state.settings });
+  setStatus(message);
 }
 
 async function saveGroups(message = "Saved.") {
@@ -274,6 +298,11 @@ async function importGroups(file) {
 }
 
 elements.exportButton.addEventListener("click", exportGroups);
+elements.closeOtherGroups.addEventListener("change", async () => {
+  state.settings.closeOtherTabGroupsWhenSwitching =
+    elements.closeOtherGroups.checked;
+  await saveSettings("Switching behavior saved.");
+});
 elements.importInput.addEventListener("change", async () => {
   const [file] = elements.importInput.files;
 
@@ -291,7 +320,7 @@ elements.importInput.addEventListener("change", async () => {
   }
 });
 
-loadGroups().catch((error) => {
+loadOptions().catch((error) => {
   console.error(error);
   setStatus(`Could not load options. ${error?.message ?? error}`);
 });

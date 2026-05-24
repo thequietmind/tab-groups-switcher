@@ -1,6 +1,10 @@
 "use strict";
 
 const api = globalThis.browser;
+const settingsKey = "settings";
+const defaultSettings = {
+  closeOtherTabGroupsWhenSwitching: false
+};
 const state = {
   groups: []
 };
@@ -107,6 +111,15 @@ async function loadGroups() {
   }
 }
 
+async function loadSettings() {
+  const result = await api.storage.local.get({ [settingsKey]: defaultSettings });
+
+  return {
+    ...defaultSettings,
+    ...(result[settingsKey] ?? {})
+  };
+}
+
 function getReadableError(error) {
   const message = error?.message ?? String(error);
 
@@ -120,18 +133,22 @@ function getReadableError(error) {
 async function activateGroup(group) {
   try {
     setStatus("");
+    const settings = await loadSettings();
+    const closeOtherGroups = settings.closeOtherTabGroupsWhenSwitching === true;
 
     if (group.type === "open") {
       await api.runtime.sendMessage({
         type: "activateOpenGroup",
         groupId: group.groupId,
         windowId: group.windowId,
-        tabId: group.tabId
+        tabId: group.tabId,
+        closeOtherGroups
       });
     } else {
       await api.runtime.sendMessage({
         type: "openRememberedGroup",
-        id: group.id
+        id: group.id,
+        closeOtherGroups
       });
     }
 
