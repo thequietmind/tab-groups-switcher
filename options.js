@@ -19,9 +19,23 @@ const colorOptions = new Set([
   "red",
   "yellow"
 ]);
+const colorMap = {
+  blue: "#45a1ff",
+  cyan: "#00c8d7",
+  gray: "#9aa0a6",
+  grey: "#9aa0a6",
+  green: "#12bc00",
+  orange: "#ff9400",
+  pink: "#ff4aa2",
+  purple: "#ab71ff",
+  red: "#ff4f5e",
+  yellow: "#d7b600"
+};
 const state = {
   groups: [],
   draggedId: null,
+  dropTargetId: null,
+  dropPosition: null,
   settings: { ...defaultSettings }
 };
 
@@ -132,6 +146,10 @@ function createGroupRow(group) {
   handle.textContent = "⋮⋮";
   handle.setAttribute("aria-hidden", "true");
 
+  const dot = document.createElement("span");
+  dot.className = "color-dot";
+  dot.style.setProperty("--indicator", colorMap[group.color] ?? colorMap.grey);
+
   const name = document.createElement("span");
   name.className = "group-name";
   name.textContent = group.name;
@@ -142,13 +160,33 @@ function createGroupRow(group) {
   });
   row.addEventListener("dragend", () => {
     state.draggedId = null;
+    clearDropTarget();
     row.classList.remove("dragging");
   });
-  row.addEventListener("dragover", (event) => event.preventDefault());
+  row.addEventListener("dragover", (event) => {
+    event.preventDefault();
+
+    if (!state.draggedId || state.draggedId === group.id) {
+      clearDropTarget();
+      return;
+    }
+
+    const rowBounds = row.getBoundingClientRect();
+    const position =
+      event.clientY < rowBounds.top + rowBounds.height / 2 ? "before" : "after";
+
+    setDropTarget(row, group.id, position);
+  });
+  row.addEventListener("dragleave", (event) => {
+    if (!row.contains(event.relatedTarget)) {
+      clearDropTarget();
+    }
+  });
   row.addEventListener("drop", async (event) => {
     event.preventDefault();
 
     if (!state.draggedId || state.draggedId === group.id) {
+      clearDropTarget();
       return;
     }
 
@@ -160,13 +198,41 @@ function createGroupRow(group) {
     }
 
     const [draggedGroup] = state.groups.splice(draggedIndex, 1);
-    state.groups.splice(targetIndex, 0, draggedGroup);
+    const adjustedTargetIndex =
+      draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    const nextIndex =
+      state.dropPosition === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+
+    state.groups.splice(nextIndex, 0, draggedGroup);
+    clearDropTarget();
     await saveGroups();
     renderGroups();
   });
 
-  row.append(handle, name);
+  row.append(handle, dot, name);
   return row;
+}
+
+function clearDropTarget() {
+  const currentTarget = elements.list.querySelector(".drop-before, .drop-after");
+
+  if (currentTarget) {
+    currentTarget.classList.remove("drop-before", "drop-after");
+  }
+
+  state.dropTargetId = null;
+  state.dropPosition = null;
+}
+
+function setDropTarget(row, groupId, position) {
+  if (state.dropTargetId === groupId && state.dropPosition === position) {
+    return;
+  }
+
+  clearDropTarget();
+  state.dropTargetId = groupId;
+  state.dropPosition = position;
+  row.classList.add(position === "before" ? "drop-before" : "drop-after");
 }
 
 elements.minimizeOtherGroups.addEventListener("change", async () => {
