@@ -116,6 +116,7 @@ remembered record so the popup does not show duplicate entries.
 To create a zip archive for uploading to the Add-on Developer Hub:
 
 ```sh
+rm ../tab-groups-switcher.zip && \
 zip -r ../tab-groups-switcher.zip \
   manifest.json \
   background.js \
