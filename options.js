@@ -66,6 +66,8 @@ function normalizeGroup(group, index) {
     color,
     urls,
     titles: urls.map((_, urlIndex) => String(titles[urlIndex] ?? "")),
+    autoCollapse: group.autoCollapse !== false,
+    liveGroupKey: typeof group.liveGroupKey === "string" ? group.liveGroupKey : "",
     order: Number.isFinite(group.order) ? group.order : index,
     createdAt: Number.isFinite(group.createdAt) ? group.createdAt : now,
     updatedAt: Number.isFinite(group.updatedAt) ? group.updatedAt : now,
@@ -96,6 +98,10 @@ function renderSettings() {
     state.settings.minimizeOtherTabGroupsWhenSwitching === true;
   elements.showRememberedClosedGroups.checked =
     state.settings.showRememberedClosedGroups === true;
+}
+
+function isAutoCollapseEnabled() {
+  return state.settings.minimizeOtherTabGroupsWhenSwitching === true;
 }
 
 async function saveSettings(message = "Settings saved.") {
@@ -129,6 +135,7 @@ function renderGroups() {
   }
 
   const fragment = document.createDocumentFragment();
+  fragment.append(createGroupsHeader());
 
   for (const group of state.groups) {
     fragment.append(createGroupRow(group));
@@ -137,15 +144,31 @@ function renderGroups() {
   elements.list.append(fragment);
 }
 
+function createGroupsHeader() {
+  const header = document.createElement("div");
+  header.className = "groups-header";
+
+  const groupLabel = document.createElement("span");
+  groupLabel.textContent = "Group";
+
+  const autoCollapseLabel = document.createElement("span");
+  autoCollapseLabel.textContent = "Auto-collapse";
+
+  header.append(document.createElement("span"), groupLabel, autoCollapseLabel);
+  return header;
+}
+
 function createGroupRow(group) {
   const row = document.createElement("article");
   row.className = "group-row";
-  row.draggable = true;
   row.dataset.id = group.id;
 
   const handle = document.createElement("span");
   handle.className = "drag-handle";
+  handle.draggable = true;
   handle.textContent = "⋮⋮";
+  handle.title = "Drag to reorder";
+  handle.style.cursor = "pointer";
   handle.setAttribute("aria-hidden", "true");
 
   const dot = document.createElement("span");
@@ -156,11 +179,36 @@ function createGroupRow(group) {
   name.className = "group-name";
   name.textContent = group.name;
 
-  row.addEventListener("dragstart", () => {
+  const groupMain = document.createElement("span");
+  groupMain.className = "group-main";
+  groupMain.append(dot, name);
+
+  const autoCollapseLabel = document.createElement("label");
+  autoCollapseLabel.className = "auto-collapse-toggle";
+
+  const autoCollapseInput = document.createElement("input");
+  autoCollapseInput.type = "checkbox";
+  autoCollapseInput.checked = group.autoCollapse !== false;
+  autoCollapseInput.disabled = !isAutoCollapseEnabled();
+  autoCollapseInput.setAttribute("aria-label", `Auto-collapse ${group.name}`);
+
+  autoCollapseLabel.append(autoCollapseInput);
+  autoCollapseInput.addEventListener("change", async () => {
+    group.autoCollapse = autoCollapseInput.checked;
+    await saveGroups("Auto-collapse setting saved.");
+  });
+
+  handle.addEventListener("dragstart", (event) => {
+    event.dataTransfer?.setData("text/plain", group.id);
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+    }
+
     state.draggedId = group.id;
     row.classList.add("dragging");
   });
-  row.addEventListener("dragend", () => {
+  handle.addEventListener("dragend", () => {
     state.draggedId = null;
     clearDropMarker();
     row.classList.remove("dragging");
@@ -181,7 +229,7 @@ function createGroupRow(group) {
     setDropMarker(row, position, targetIndex);
   });
 
-  row.append(handle, dot, name);
+  row.append(handle, groupMain, autoCollapseLabel);
   return row;
 }
 
@@ -253,6 +301,7 @@ elements.minimizeOtherGroups.addEventListener("change", async () => {
   state.settings.minimizeOtherTabGroupsWhenSwitching =
     elements.minimizeOtherGroups.checked;
   await saveSettings("Switching behavior saved.");
+  renderGroups();
 });
 
 elements.showRememberedClosedGroups.addEventListener("change", async () => {

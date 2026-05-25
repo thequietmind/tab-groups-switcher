@@ -251,6 +251,8 @@ function normalizeStoredGroup(group, index) {
     color: String(group.color || "grey"),
     urls,
     titles: urls.map((_, urlIndex) => String(titles[urlIndex] ?? "")),
+    autoCollapse: group.autoCollapse !== false,
+    liveGroupKey: typeof group.liveGroupKey === "string" ? group.liveGroupKey : "",
     order: Number.isFinite(group.order) ? group.order : index,
     createdAt: Number.isFinite(group.createdAt) ? group.createdAt : now,
     updatedAt: Number.isFinite(group.updatedAt) ? group.updatedAt : now,
@@ -296,6 +298,9 @@ function compactRememberedGroups(groups) {
 
     existingGroup.name = existingGroup.name || group.name;
     existingGroup.color = existingGroup.color || group.color;
+    existingGroup.autoCollapse =
+      existingGroup.autoCollapse !== false && group.autoCollapse !== false;
+    existingGroup.liveGroupKey = existingGroup.liveGroupKey || group.liveGroupKey;
     existingGroup.createdAt = Math.min(existingGroup.createdAt, group.createdAt);
     existingGroup.updatedAt = Math.max(existingGroup.updatedAt, group.updatedAt);
   }
@@ -391,19 +396,24 @@ async function snapshotOpenGroups() {
   }
 
   const rememberedGroups = await loadRememberedGroups();
-  const nextGroups = [...rememberedGroups];
+  const nextGroups = rememberedGroups.map((group) => ({
+    ...group,
+    liveGroupKey: ""
+  }));
 
-  for (const { snapshot } of openSnapshots) {
+  for (const { group, snapshot } of openSnapshots) {
     const existingGroup = findRememberedMatch(snapshot, nextGroups, {
       allowNameOnly: true
     });
     const now = Date.now();
+    const liveGroupKey = getGroupKey(group);
 
     if (existingGroup) {
       existingGroup.name = snapshot.name;
       existingGroup.color = snapshot.color;
       existingGroup.urls = snapshot.urls;
       existingGroup.titles = snapshot.titles;
+      existingGroup.liveGroupKey = liveGroupKey;
       existingGroup.updatedAt = now;
       existingGroup.source = "auto-tracked";
       continue;
@@ -415,6 +425,8 @@ async function snapshotOpenGroups() {
       color: snapshot.color,
       urls: snapshot.urls,
       titles: snapshot.titles,
+      autoCollapse: true,
+      liveGroupKey,
       order: nextGroups.length,
       createdAt: now,
       updatedAt: now,
@@ -523,14 +535,44 @@ async function getMenuGroups(options = {}) {
 }
 
 async function minimizeOtherOpenTabGroups(selectedGroupId) {
-  if (selectedGroupId === undefined || !api?.tabGroups?.query || !api?.tabGroups?.update) {
+  if (
+    selectedGroupId === undefined ||
+    !api?.tabGroups?.query ||
+    !api?.tabGroups?.update
+  ) {
     return;
   }
 
-  const groups = await api.tabGroups.query({});
-  const groupIdsToMinimize = groups
-    .map(getGroupId)
-    .filter((groupId) => groupId !== undefined && groupId !== selectedGroupId);
+  const rememberedGroups = await snapshotOpenGroups();
+  const openSnapshots = await queryOpenGroupSnapshots();
+  const excludedLiveGroupKeys = new Set(
+    rememberedGroups
+      .filter((group) => group.autoCollapse === false && group.liveGroupKey)
+      .map((group) => group.liveGroupKey)
+  );
+  const groupIdsToMinimize = [];
+
+  for (const { group, snapshot } of openSnapshots) {
+    const groupId = getGroupId(group);
+
+    if (groupId === undefined || groupId === selectedGroupId) {
+      continue;
+    }
+
+    if (excludedLiveGroupKeys.has(getGroupKey(group))) {
+      continue;
+    }
+
+    const rememberedMatch = findRememberedMatch(snapshot, rememberedGroups, {
+      allowNameOnly: true
+    });
+
+    if (rememberedMatch?.autoCollapse === false) {
+      continue;
+    }
+
+    groupIdsToMinimize.push(groupId);
+  }
 
   for (const groupId of groupIdsToMinimize) {
     await api.tabGroups.update(groupId, { collapsed: true });

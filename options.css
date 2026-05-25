@@ -97,11 +97,27 @@ h1 {
   font-size: 13px;
 }
 
+.groups-header,
 .group-row {
   display: grid;
-  grid-template-columns: 18px 12px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr) 92px;
   align-items: center;
   gap: 10px;
+}
+
+.groups-header {
+  min-height: 30px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.groups-header span:last-child {
+  justify-self: center;
+}
+
+.group-row {
   min-height: 38px;
   padding: 5px 8px;
   border-bottom: 1px solid var(--border);
@@ -109,10 +125,6 @@ h1 {
 
 .group-row:last-child {
   border-bottom: 0;
-}
-
-.group-row[draggable="true"] {
-  cursor: grab;
 }
 
 .group-row.dragging {
@@ -140,10 +152,18 @@ h1 {
 }
 
 .drag-handle {
+  cursor: pointer;
   color: var(--muted);
   font-size: 13px;
   line-height: 1;
   text-align: center;
+}
+
+.group-main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
 }
 
 .color-dot {
@@ -162,4 +182,16 @@ h1 {
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.auto-collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  width: 92px;
+}
+
+.auto-collapse-toggle input:disabled {
+  opacity: 0.58;
 }
