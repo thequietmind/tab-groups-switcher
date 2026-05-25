@@ -3,6 +3,12 @@
   "name": "Tab Groups Switcher",
   "version": "1.0.0",
   "description": "Switch focus faster with a dedicated Firefox tab groups switcher.",
+  "icons": {
+    "16": "icons/icon-dark.svg",
+    "32": "icons/icon-dark.svg",
+    "48": "icons/icon-dark.svg",
+    "96": "icons/icon-dark.svg"
+  },
   "permissions": [
     "menus",
     "storage",
@@ -17,7 +23,22 @@
   "action": {
     "default_title": "Tab Groups Switcher",
     "default_popup": "popup.html",
-    "default_icon": "icons/icon.svg"
+    "default_icon": {
+      "16": "icons/icon-dark.svg",
+      "32": "icons/icon-dark.svg"
+    },
+    "theme_icons": [
+      {
+        "light": "icons/icon-light.svg",
+        "dark": "icons/icon-dark.svg",
+        "size": 16
+      },
+      {
+        "light": "icons/icon-light.svg",
+        "dark": "icons/icon-dark.svg",
+        "size": 32
+      }
+    ]
   },
   "options_ui": {
     "page": "options.html",
@@ -32,9 +53,5 @@
         ]
       }
     }
-  },
-  "icons": {
-    "48": "icons/icon.svg",
-    "96": "icons/icon.svg"
   }
 }
