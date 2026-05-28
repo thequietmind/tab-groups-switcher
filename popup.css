@@ -8,7 +8,7 @@
   --focus: AccentColor;
   --indicator: AccentColor;
   --popup-width: 460px;
-  --popup-max-height: 100vh;
+  --popup-max-height: 1440px;
 }
 
 * {
