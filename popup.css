@@ -7,8 +7,8 @@
   --active: color-mix(in srgb, AccentColor 20%, Canvas);
   --focus: AccentColor;
   --indicator: AccentColor;
-  --popup-width: 340px;
-  --popup-max-height: 560px;
+  --popup-width: 460px;
+  --popup-max-height: 100vh;
 }
 
 * {
