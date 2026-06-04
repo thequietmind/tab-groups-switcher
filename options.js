@@ -37,6 +37,7 @@ const state = {
   dropIndex: null,
   settings: { ...defaultSettings }
 };
+let pendingGroupSave = Promise.resolve();
 
 const elements = {
   list: document.querySelector("#groups-list"),
@@ -110,13 +111,33 @@ async function saveSettings(message = "Settings saved.") {
 }
 
 async function saveGroups(message = "Order saved.") {
-  state.groups = state.groups.map((group, index) => ({
+  const groupsToSave = state.groups.map((group, index) => ({
     ...group,
     order: index,
     updatedAt: Date.now()
   }));
-  await api.storage.local.set({ [storageKey]: state.groups });
-  setStatus(message);
+  const previousSave = pendingGroupSave.catch(() => {});
+  const saveOperation = previousSave.then(async () => {
+    await api.storage.local.set({ [storageKey]: groupsToSave });
+    setStatus(message);
+  });
+
+  state.groups = groupsToSave;
+  pendingGroupSave = saveOperation;
+  await saveOperation;
+}
+
+function setGroupAutoCollapse(groupId, autoCollapse) {
+  state.groups = state.groups.map((group) => {
+    if (group.id !== groupId) {
+      return group;
+    }
+
+    return {
+      ...group,
+      autoCollapse
+    };
+  });
 }
 
 function clearList() {
@@ -194,7 +215,7 @@ function createGroupRow(group) {
 
   autoCollapseLabel.append(autoCollapseInput);
   autoCollapseInput.addEventListener("change", async () => {
-    group.autoCollapse = autoCollapseInput.checked;
+    setGroupAutoCollapse(group.id, autoCollapseInput.checked);
     await saveGroups("Auto-collapse setting saved.");
   });
 
