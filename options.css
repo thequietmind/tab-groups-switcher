@@ -77,13 +77,6 @@ h1 {
   font-size: 13px;
 }
 
-.helper-text {
-  margin: -2px 0 0 24px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 .groups-list {
   display: flex;
   flex-direction: column;

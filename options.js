@@ -4,8 +4,7 @@ const api = globalThis.browser;
 const storageKey = "rememberedGroups";
 const settingsKey = "settings";
 const defaultSettings = {
-  minimizeOtherTabGroupsWhenSwitching: true,
-  showRememberedClosedGroups: false
+  minimizeOtherTabGroupsWhenSwitching: true
 };
 const colorOptions = new Set([
   "blue",
@@ -42,10 +41,7 @@ let pendingGroupSave = Promise.resolve();
 const elements = {
   list: document.querySelector("#groups-list"),
   status: document.querySelector("#status"),
-  minimizeOtherGroups: document.querySelector("#minimize-other-groups"),
-  showRememberedClosedGroups: document.querySelector(
-    "#show-remembered-closed-groups"
-  )
+  minimizeOtherGroups: document.querySelector("#minimize-other-groups")
 };
 const dropMarker = document.createElement("div");
 dropMarker.className = "drop-marker";
@@ -76,29 +72,41 @@ function normalizeGroup(group, index) {
   };
 }
 
+function setGroups(groups) {
+  state.groups = (groups ?? [])
+    .map(normalizeGroup)
+    .sort((first, second) => first.order - second.order)
+    .map((group, index) => ({ ...group, order: index }));
+}
+
 async function loadOptions() {
-  const result = await api.storage.local.get({
-    [storageKey]: [],
-    [settingsKey]: defaultSettings
-  });
-  const groups = Array.isArray(result[storageKey]) ? result[storageKey] : [];
+  const groups = await api.runtime.sendMessage({ type: "snapshotOpenGroups" });
+  const result = await api.storage.local.get({ [settingsKey]: defaultSettings });
   state.settings = {
     ...defaultSettings,
     ...(result[settingsKey] ?? {})
   };
-  state.groups = groups
-    .map(normalizeGroup)
-    .sort((first, second) => first.order - second.order)
-    .map((group, index) => ({ ...group, order: index }));
+  setGroups(groups);
   renderSettings();
+  renderGroups();
+}
+
+async function refreshGroups() {
+  const pendingSave = pendingGroupSave;
+  await pendingSave.catch(() => {});
+  const groups = await api.runtime.sendMessage({ type: "snapshotOpenGroups" });
+
+  if (pendingGroupSave !== pendingSave || state.draggedId) {
+    return;
+  }
+
+  setGroups(groups);
   renderGroups();
 }
 
 function renderSettings() {
   elements.minimizeOtherGroups.checked =
     state.settings.minimizeOtherTabGroupsWhenSwitching === true;
-  elements.showRememberedClosedGroups.checked =
-    state.settings.showRememberedClosedGroups === true;
 }
 
 function isAutoCollapseEnabled() {
@@ -146,11 +154,12 @@ function clearList() {
 
 function renderGroups() {
   clearList();
+  const openGroups = state.groups.filter((group) => group.liveGroupKey);
 
-  if (state.groups.length === 0) {
+  if (openGroups.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty";
-    empty.textContent = "No remembered groups yet.";
+    empty.textContent = "No open tab groups.";
     elements.list.append(empty);
     return;
   }
@@ -158,7 +167,7 @@ function renderGroups() {
   const fragment = document.createDocumentFragment();
   fragment.append(createGroupsHeader());
 
-  for (const group of state.groups) {
+  for (const group of openGroups) {
     fragment.append(createGroupRow(group));
   }
 
@@ -325,11 +334,15 @@ elements.minimizeOtherGroups.addEventListener("change", async () => {
   renderGroups();
 });
 
-elements.showRememberedClosedGroups.addEventListener("change", async () => {
-  state.settings.showRememberedClosedGroups =
-    elements.showRememberedClosedGroups.checked;
-  await saveSettings("Remembered group visibility saved.");
-});
+for (const groupEvent of [
+  api.tabGroups?.onCreated,
+  api.tabGroups?.onUpdated,
+  api.tabGroups?.onRemoved
+]) {
+  groupEvent?.addListener(() => {
+    refreshGroups().catch((error) => console.error(error));
+  });
+}
 
 loadOptions().catch((error) => {
   console.error(error);

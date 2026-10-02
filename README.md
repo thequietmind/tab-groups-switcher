@@ -3,15 +3,6 @@
 A compact Firefox WebExtension for quickly switching between currently open
 Firefox tab groups.
 
-By default, the popup shows only open tab groups. Remembered closed tab groups
-are an experimental opt-in feature for people who want the extension to recreate
-groups it has previously tracked.
-
-Firefox does not currently expose native saved tab groups to WebExtensions. When
-remembered closed groups are enabled, the extension recreates them from stored
-URLs instead of reopening Firefox's native saved group identity. This will
-duplicate Firefox's own saved groups when those saved groups still exist.
-
 ## Install for Testing
 
 1. Open Firefox and go to `about:debugging`.
@@ -27,23 +18,19 @@ duplicate Firefox's own saved groups when those saved groups still exist.
    with its color and title.
 3. Click an open group and confirm Firefox focuses that window, expands the group
    if needed, and activates a tab in the group.
-4. Close or save a group after it has been seen by the extension.
-5. Reopen the popup and confirm the remembered closed group is hidden by default.
-6. Open the extension options page and enable
-   **Show remembered closed tab groups**.
-7. Reopen the popup and confirm the remembered group appears with an outlined
-   color dot and does not duplicate any currently open group.
-8. Click the remembered group and confirm its tabs reopen in a recreated tab
-   group with the saved title and color.
-9. Disable **Show remembered closed tab groups** and confirm remembered groups
-   are hidden again.
-10. Open the extension options page and confirm tracked groups can be reordered
-    by dragging their handles.
-11. Confirm **Minimize other tab groups when switching** is enabled, switch
-    groups from the popup, and confirm other open groups collapse while
-    ungrouped tabs remain open.
-12. Uncheck **Auto-collapse** for one tracked group, switch to another group
-    from the popup, and confirm the unchecked group stays expanded.
+4. Open the extension options page and confirm it lists only open groups and
+   that they can be reordered by dragging their handles.
+5. In a group with a single tab, visit several different pages, then reload the
+   options page and confirm the group is still listed once.
+6. With the options page open, delete a group and confirm it disappears from
+   the list.
+7. Restart Firefox with session restore enabled and confirm restored groups keep
+   their order and **Auto-collapse** settings.
+8. Confirm **Minimize other tab groups when switching** is enabled, switch
+   groups from the popup, and confirm other open groups collapse while
+   ungrouped tabs remain open.
+9. Uncheck **Auto-collapse** for one group, switch to another group from the
+   popup, and confirm the unchecked group stays expanded.
 
 If the popup says `Firefox tab group extension APIs are not available in this
 browser version.`, update Firefox to a version that supports the
@@ -60,56 +47,45 @@ The popup respects the saved manual order for tracked groups. Open groups that
 match a tracked group use that saved order, while open groups that have not been
 tracked yet appear after ordered groups.
 
-## Experimental Remembering
+## Group Tracking
 
 The background script watches tab group and tab lifecycle events, then snapshots
-every visible/open tab group with its title, color, ordered URLs, ordered tab
-titles, and timestamps. Remembered groups are stored in `browser.storage.local`
-and keep a manual `order` value for the popup.
+every open tab group with its title, color, ordered URLs, ordered tab titles, and
+timestamps. Tracked groups are stored in `browser.storage.local` so they keep a
+manual `order` value and an **Auto-collapse** setting.
 
-Remembered closed groups stay hidden unless **Show remembered closed tab groups**
-is enabled in options. When enabled, the popup shows open groups with filled
-color dots and remembered closed groups with outlined color dots. When a
-currently open group matches a remembered group, the popup hides the remembered
-duplicate and clicking that row focuses the open group.
+While Firefox is running, a tracked group follows its live group by window and
+group ID, so navigating inside a group updates the same record. After a restart,
+groups are matched by exact URL signatures, then normalized group names plus URL
+overlap, which avoids relying on Firefox group IDs being stable across sessions.
 
-Matching favors exact URL signatures, then normalized group names plus URL
-overlap. This avoids relying on Firefox group IDs being stable across sessions.
+When Firefox removes a group from a window that stays open, the extension
+forgets it. Firefox reports deleting a group and saving and closing it the same
+way, so a saved group you reopen later is tracked as a new group at the end of
+the list. Groups that close along with their window are kept, because quitting
+Firefox closes windows the same way, and session restore should bring them back
+with their order and settings intact.
 
 ## Options
 
-Open the extension options page to manage switching and remembered group
-visibility:
+Open the extension options page to manage switching:
 
-- Reorder with drag and drop.
+- Reorder open groups with drag and drop.
 - Toggle whether switching to a group minimizes other currently open tab groups.
-- Uncheck **Auto-collapse** for tracked groups that should stay expanded during
-  switch actions.
-- Toggle whether remembered closed tab groups appear in the popup.
+- Uncheck **Auto-collapse** for groups that should stay expanded during switch
+  actions.
 
-The tracked group list includes a drag handle for ordering and an
+The group list shows only open groups and updates as groups are created,
+renamed, or removed. Each row has a drag handle for ordering and an
 **Auto-collapse** checkbox for per-group switching behavior.
 
 ## Switching Behavior
 
-By default, switching groups first focuses or recreates the selected group, then
-collapses the other open tab groups. Ungrouped tabs are not changed. Disable
+By default, switching groups first focuses the selected group, then collapses
+the other open tab groups. Ungrouped tabs are not changed. Disable
 **Minimize other tab groups when switching** if you want other open groups to
 stay expanded. To keep only specific tracked groups expanded during switch
 actions, uncheck **Auto-collapse** for those groups in options.
-
-## Restore Behavior
-
-Firefox does not expose native saved tab groups directly to WebExtensions, and
-the supported `sessions` API exposes recently closed entries as tabs or windows
-rather than tab group records. Because of that, the extension cannot reopen a
-specific native saved tab group by identity.
-
-When remembered closed groups are enabled and you click a remembered group, the
-extension first checks whether an equivalent group is already open and focuses
-it. If it is closed, the extension recreates the group from the URLs it
-previously remembered, then reconciles the new live group back into the existing
-remembered record so the popup does not show duplicate entries.
 
 ## Development
 
@@ -133,8 +109,9 @@ zip -r ../tab-groups-switcher.zip \
 ## Limitations
 
 This extension does not read Firefox profile files, inspect sessionstore
-internals, use native messaging, or call undocumented APIs. It can only recreate
-groups that it previously saw while they were open and exposed by Firefox.
+internals, use native messaging, or call undocumented APIs. Firefox does not
+expose saved tab groups to WebExtensions, so the extension only sees open groups
+and cannot tell a deleted group from a saved one.
 
 ## Bugzilla Tracking
 

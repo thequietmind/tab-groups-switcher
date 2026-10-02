@@ -4,18 +4,7 @@ const api = globalThis.browser;
 const storageKey = "rememberedGroups";
 const settingsMenuId = "open-settings";
 const ungroupedId = api?.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
-const validColors = new Set([
-  "blue",
-  "cyan",
-  "grey",
-  "gray",
-  "green",
-  "orange",
-  "pink",
-  "purple",
-  "red",
-  "yellow"
-]);
+const removedGroupKeys = new Set();
 
 let snapshotTimer = null;
 
@@ -320,27 +309,6 @@ async function saveRememberedGroups(groups) {
   return normalizedGroups;
 }
 
-async function updateRememberedGroup(rememberedGroupId, updates) {
-  const rememberedGroups = await loadRememberedGroups();
-  const groupIndex = rememberedGroups.findIndex(
-    (group) => group.id === rememberedGroupId
-  );
-
-  if (groupIndex === -1) {
-    return saveRememberedGroups(rememberedGroups);
-  }
-
-  rememberedGroups[groupIndex] = {
-    ...rememberedGroups[groupIndex],
-    ...updates,
-    id: rememberedGroupId,
-    updatedAt: Date.now(),
-    source: "auto-tracked"
-  };
-
-  return saveRememberedGroups(rememberedGroups);
-}
-
 function getGroupSnapshot(group, groupTabs) {
   return {
     name: getGroupName(group),
@@ -390,23 +358,25 @@ async function queryOpenGroupSnapshots() {
 
 async function snapshotOpenGroups() {
   const openSnapshots = await queryOpenGroupSnapshots();
-
-  if (openSnapshots.length === 0) {
-    return loadRememberedGroups();
-  }
-
+  const openGroupKeys = new Set(openSnapshots.map(({ group }) => getGroupKey(group)));
   const rememberedGroups = await loadRememberedGroups();
-  const nextGroups = rememberedGroups.map((group) => ({
-    ...group,
-    liveGroupKey: ""
-  }));
+  const nextGroups = rememberedGroups
+    .filter((group) => !removedGroupKeys.has(group.liveGroupKey))
+    .map((group) => ({
+      ...group,
+      liveGroupKey: openGroupKeys.has(group.liveGroupKey) ? group.liveGroupKey : ""
+    }));
 
   for (const { group, snapshot } of openSnapshots) {
-    const existingGroup = findRememberedMatch(snapshot, nextGroups, {
-      allowNameOnly: true
-    });
-    const now = Date.now();
     const liveGroupKey = getGroupKey(group);
+    const existingGroup =
+      nextGroups.find((candidate) => candidate.liveGroupKey === liveGroupKey) ??
+      findRememberedMatch(
+        snapshot,
+        nextGroups.filter((candidate) => !candidate.liveGroupKey),
+        { allowNameOnly: true }
+      );
+    const now = Date.now();
 
     if (existingGroup) {
       existingGroup.name = snapshot.name;
@@ -448,55 +418,27 @@ function scheduleSnapshot() {
   }, 350);
 }
 
-function getOpenIds(openSnapshots, rememberedGroups) {
-  const openIds = new Set();
-
-  for (const rememberedGroup of rememberedGroups) {
-    if (isRememberedGroupOpen(rememberedGroup, openSnapshots)) {
-      openIds.add(rememberedGroup.id);
-    }
+function onGroupRemoved(group, removeInfo) {
+  if (!removeInfo?.isWindowClosing) {
+    removedGroupKeys.add(getGroupKey(group));
   }
 
-  return openIds;
+  scheduleSnapshot();
 }
 
-function isRememberedGroupOpen(rememberedGroup, openSnapshots) {
-  const rememberedName = normalizeName(rememberedGroup.name);
-
-  for (const { snapshot } of openSnapshots) {
-    const snapshotName = normalizeName(snapshot.name);
-
-    if (hasExactUrlOrder(snapshot, rememberedGroup)) {
-      return true;
-    }
-
-    if (rememberedName && snapshotName === rememberedName) {
-      return true;
-    }
-
-    if (getUrlOverlap(snapshot, rememberedGroup) >= 0.7) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-async function getMenuGroups(options = {}) {
+async function getMenuGroups() {
   const rememberedGroups = await snapshotOpenGroups();
   const openSnapshots = await queryOpenGroupSnapshots();
-  const openIds = getOpenIds(openSnapshots, rememberedGroups);
   const matchedOpenGroups = [];
   const unmatchedOpenGroups = [];
 
   for (const { group, tabs, snapshot } of openSnapshots) {
-    const rememberedMatch = findRememberedMatch(snapshot, rememberedGroups, {
-      allowNameOnly: true
-    });
+    const rememberedMatch = rememberedGroups.find(
+      (rememberedGroup) => rememberedGroup.liveGroupKey === getGroupKey(group)
+    );
     const targetTab = tabs.find((tab) => !tab.discarded) ?? tabs[0];
     const menuGroup = {
       id: rememberedMatch?.id ?? getRememberedId(snapshot),
-      type: "open",
       name: snapshot.name,
       color: snapshot.color,
       groupId: getGroupId(group),
@@ -514,20 +456,7 @@ async function getMenuGroups(options = {}) {
     }
   }
 
-  const rememberedMenuGroups =
-    options.includeRememberedGroups === true
-      ? rememberedGroups
-          .filter((group) => !openIds.has(group.id))
-          .map((group) => ({
-            id: group.id,
-            type: "remembered",
-            name: group.name,
-            color: group.color,
-            order: group.order
-          }))
-      : [];
-
-  const orderedGroups = [...matchedOpenGroups, ...rememberedMenuGroups].sort(
+  const orderedGroups = matchedOpenGroups.sort(
     (first, second) => first.order - second.order
   );
 
@@ -597,118 +526,13 @@ async function activateOpenGroup(groupId, windowId, tabId, options = {}) {
   }
 }
 
-function findOpenMatchForRememberedGroup(rememberedGroup, openSnapshots) {
-  return openSnapshots.find(({ snapshot }) => {
-    return (
-      findRememberedMatch(snapshot, [rememberedGroup], {
-        allowNameOnly: true
-      })?.id === rememberedGroup.id
-    );
-  });
-}
-
-async function focusOpenRememberedGroup(rememberedGroup, options = {}) {
-  const openMatch = findOpenMatchForRememberedGroup(
-    rememberedGroup,
-    await queryOpenGroupSnapshots()
-  );
-
-  if (!openMatch) {
-    return false;
-  }
-
-  const targetTab = openMatch.tabs.find((tab) => !tab.discarded) ?? openMatch.tabs[0];
-  await activateOpenGroup(
-    getGroupId(openMatch.group),
-    openMatch.group.windowId,
-    targetTab?.id,
-    options
-  );
-  return true;
-}
-
-async function recreateRememberedGroup(rememberedGroup, options = {}) {
-  if (!api?.tabs?.create || !api?.tabs?.group || !api?.tabGroups?.update) {
-    throw new Error("This Firefox version cannot create tab groups from extensions.");
-  }
-
-  const urls = rememberedGroup.urls.length > 0 ? rememberedGroup.urls : ["about:blank"];
-  const createdTabs = [];
-
-  for (const [index, url] of urls.entries()) {
-    const tab = await api.tabs.create({
-      url,
-      active: index === 0
-    });
-    createdTabs.push(tab);
-  }
-
-  const tabIds = createdTabs.map((tab) => tab.id).filter((id) => id !== undefined);
-  const groupIdResult = await api.tabs.group({ tabIds });
-  const updateProperties = {
-    collapsed: false,
-    title: rememberedGroup.name
-  };
-
-  if (validColors.has(rememberedGroup.color)) {
-    updateProperties.color = rememberedGroup.color;
-  }
-
-  await api.tabGroups.update(groupIdResult, updateProperties);
-
-  const firstTab = createdTabs[0];
-
-  if (firstTab?.windowId !== undefined && api.windows?.update) {
-    await api.windows.update(firstTab.windowId, { focused: true });
-  }
-
-  if (firstTab?.id !== undefined) {
-    await api.tabs.update(firstTab.id, { active: true });
-  }
-
-  if (options.minimizeOtherGroups) {
-    await minimizeOtherOpenTabGroups(groupIdResult);
-  }
-
-  await updateRememberedGroup(rememberedGroup.id, {
-    name: rememberedGroup.name,
-    color: rememberedGroup.color,
-    urls: createdTabs.map((tab) => tab.url).filter(Boolean),
-    titles: createdTabs.map((tab) => tab.title ?? "")
-  });
-  await snapshotOpenGroups();
-}
-
-async function openRememberedGroup(groupId, options = {}) {
-  const rememberedGroups = await loadRememberedGroups();
-  const rememberedGroup = rememberedGroups.find((group) => group.id === groupId);
-
-  if (!rememberedGroup) {
-    throw new Error("That remembered group no longer exists.");
-  }
-
-  if (await focusOpenRememberedGroup(rememberedGroup, options)) {
-    return;
-  }
-
-  await recreateRememberedGroup(rememberedGroup, options);
-}
-
 function onMessage(message) {
   if (message?.type === "getMenuGroups") {
-    return getMenuGroups({
-      includeRememberedGroups: message.includeRememberedGroups === true
-    });
+    return getMenuGroups();
   }
 
   if (message?.type === "activateOpenGroup") {
     return activateOpenGroup(message.groupId, message.windowId, message.tabId, {
-      minimizeOtherGroups: message.minimizeOtherGroups === true
-    });
-  }
-
-  if (message?.type === "openRememberedGroup") {
-    return openRememberedGroup(message.id, {
       minimizeOtherGroups: message.minimizeOtherGroups === true
     });
   }
@@ -736,7 +560,7 @@ addListener(api.menus?.onClicked, (info) => {
 });
 addListener(api.tabGroups?.onCreated, scheduleSnapshot);
 addListener(api.tabGroups?.onUpdated, scheduleSnapshot);
-addListener(api.tabGroups?.onRemoved, scheduleSnapshot);
+addListener(api.tabGroups?.onRemoved, onGroupRemoved);
 addListener(api.tabs?.onCreated, scheduleSnapshot);
 addListener(api.tabs?.onUpdated, scheduleSnapshot);
 addListener(api.tabs?.onRemoved, scheduleSnapshot);

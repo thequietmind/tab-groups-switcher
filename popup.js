@@ -3,8 +3,7 @@
 const api = globalThis.browser;
 const settingsKey = "settings";
 const defaultSettings = {
-  minimizeOtherTabGroupsWhenSwitching: true,
-  showRememberedClosedGroups: false
+  minimizeOtherTabGroupsWhenSwitching: true
 };
 const state = {
   groups: []
@@ -52,18 +51,13 @@ function getColorValue(color) {
 function createGroupButton(group) {
   const title = getGroupTitle(group);
   const button = document.createElement("button");
-  button.className = `group-button group-button-${group.type}`;
+  button.className = "group-button";
   button.type = "button";
   button.dataset.groupId = group.id;
-  button.dataset.groupType = group.type;
   button.setAttribute("role", "menuitem");
-  button.setAttribute(
-    "aria-label",
-    group.type === "open" ? `${title}, open` : `${title}, remembered`
-  );
 
   const indicator = document.createElement("span");
-  indicator.className = `color-dot color-dot-${group.type}`;
+  indicator.className = "color-dot";
   indicator.style.setProperty("--indicator", getColorValue(group.color));
 
   const titleElement = document.createElement("span");
@@ -103,12 +97,7 @@ async function loadGroups() {
 
   try {
     setStatus("Loading tab groups...");
-    const settings = await loadSettings();
-    state.groups =
-      (await api.runtime.sendMessage({
-        type: "getMenuGroups",
-        includeRememberedGroups: settings.showRememberedClosedGroups === true
-      })) ?? [];
+    state.groups = (await api.runtime.sendMessage({ type: "getMenuGroups" })) ?? [];
     renderGroups();
   } catch (error) {
     console.error(error);
@@ -140,24 +129,14 @@ async function activateGroup(group) {
   try {
     setStatus("");
     const settings = await loadSettings();
-    const minimizeOtherGroups =
-      settings.minimizeOtherTabGroupsWhenSwitching === true;
 
-    if (group.type === "open") {
-      await api.runtime.sendMessage({
-        type: "activateOpenGroup",
-        groupId: group.groupId,
-        windowId: group.windowId,
-        tabId: group.tabId,
-        minimizeOtherGroups
-      });
-    } else {
-      await api.runtime.sendMessage({
-        type: "openRememberedGroup",
-        id: group.id,
-        minimizeOtherGroups
-      });
-    }
+    await api.runtime.sendMessage({
+      type: "activateOpenGroup",
+      groupId: group.groupId,
+      windowId: group.windowId,
+      tabId: group.tabId,
+      minimizeOtherGroups: settings.minimizeOtherTabGroupsWhenSwitching === true
+    });
 
     window.close();
   } catch (error) {
